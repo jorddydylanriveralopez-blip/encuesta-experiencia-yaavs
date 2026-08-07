@@ -6,12 +6,30 @@ Formulario web tipo **Fillout** (una pregunta a la vez, animaciones, lógica con
 
 ```bash
 cd "/Users/LBARRADAS/Desktop/Formulario 3"
-npm run dev
+npm install
+npm start
 ```
 
-Abre http://localhost:5173
+Abre http://localhost:3000
 
 Sin endpoint configurado, las respuestas se guardan en `localStorage` (modo demo).
+
+## Deploy en Hostinger (Node.js)
+
+En **Revisa los ajustes de compilación**:
+
+| Campo | Valor |
+|---|---|
+| Preajuste del marco | Otro |
+| Rama | `main` (o `principal`) |
+| Versión de Node | 22.x |
+| Directorio raíz | `./` |
+| Comando de instalación | `npm install` |
+| Comando de compilación | *(vacío)* |
+| Archivo / comando de inicio | `npm start` o `server.js` |
+
+Luego pulsa **Implementar**.
+El sitio quedará en tu dominio `.hostingersite.com`.
 
 ## Conectar Google Sheets
 
