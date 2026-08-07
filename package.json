@@ -1,0 +1,10 @@
+{
+  "name": "encuesta-experiencia-yaavs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Encuesta integral NPS YAAVS — formulario estilo Fillout conectado a Google Sheets",
+  "scripts": {
+    "dev": "npx --yes serve public -l 5173",
+    "start": "npx --yes serve public -l 5173"
+  }
+}
