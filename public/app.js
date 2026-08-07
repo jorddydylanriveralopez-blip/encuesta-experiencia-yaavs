@@ -672,43 +672,84 @@
     };
   }
 
+  function formatPayloadForSheet(payload) {
+    return [
+      `Clave: ${payload.clave}`,
+      `NPS: ${payload.nps}`,
+      `Motivo: ${payload.motivo}`,
+      `Ejecutivo: ${payload.ejecutivo}`,
+      `Mesa uso: ${payload.mesaUso}`,
+      `Mesa soporte: ${payload.mesa_soporte}`,
+      `Mesa espera: ${payload.mesa_espera}`,
+      `Mesa resolución: ${payload.mesa_resolucion}`,
+      `Mesa amabilidad: ${payload.mesa_amabilidad}`,
+      `Mesa conocimiento: ${payload.mesa_conocimiento}`,
+      `Mesa trato: ${payload.mesa_trato}`,
+      `Mesa mejoras: ${payload.mesaMejoras}`,
+      `RecargaKlic uso: ${payload.recargaUso}`,
+      `RecargaKlic exp: ${payload.recargaExp}`,
+      `RecargaKlic mejora: ${payload.recargaMejora}`,
+      `POP uso: ${payload.popUso}`,
+      `POP sat: ${payload.popSat}`,
+      `POP mejora: ${payload.popMejora}`,
+      `Rentabilidad: ${payload.rentabilidad}`,
+      `Antigüedad: ${payload.antiguedad}`,
+      `Mejora general: ${payload.mejoraGeneral}`,
+      `JSON: ${JSON.stringify(payload)}`,
+    ].join("\n");
+  }
+
+  async function submitToGoogleForms(payload) {
+    const action = String(cfg.formAction || "").trim();
+    const entryId = String(cfg.entryId || "").trim();
+    if (!action || !entryId) throw new Error("Falta configuración de Google Forms");
+
+    const body = new URLSearchParams();
+    body.set(entryId, formatPayloadForSheet(payload));
+
+    // Google Forms no expone CORS; no-cors alcanza para registrar la respuesta.
+    await fetch(action, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
+    });
+  }
+
   async function submitForm() {
     if (!canContinue("mejoraGeneral") || state.submitting) return;
     state.submitting = true;
     render();
 
-    const endpoint = String(cfg.endpoint || "").trim();
     const payload = buildPayload();
+    const mode = String(cfg.mode || "").trim();
+    const endpoint = String(cfg.endpoint || "").trim();
 
     try {
-      if (!endpoint) {
-        // Modo demo: guarda en localStorage para que puedas probar sin Sheets.
+      if (mode === "google-forms" || cfg.formAction) {
+        await submitToGoogleForms(payload);
+      } else if (endpoint) {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          redirect: "follow",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok && res.type !== "opaque") {
+          let message = "No se pudo guardar en Sheets";
+          try {
+            const json = await res.json();
+            if (json && json.error) message = json.error;
+          } catch (_) {}
+          throw new Error(message);
+        }
+      } else {
         const key = "yaavs_nps_demo_submissions";
         const prev = JSON.parse(localStorage.getItem(key) || "[]");
         prev.push(payload);
         localStorage.setItem(key, JSON.stringify(prev));
-        state.submitting = false;
-        state.stepId = "done";
-        state._lastError = null;
-        render();
         showToast("Guardado en modo demo (sin endpoint de Sheets)");
-        return;
-      }
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        redirect: "follow",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok && res.type !== "opaque") {
-        let message = "No se pudo guardar en Sheets";
-        try {
-          const json = await res.json();
-          if (json && json.error) message = json.error;
-        } catch (_) {}
-        throw new Error(message);
       }
 
       state.submitting = false;
