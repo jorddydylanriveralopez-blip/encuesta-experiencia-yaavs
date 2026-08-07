@@ -5,9 +5,14 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const publicDir = path.join(__dirname, "public");
 
+app.disable("x-powered-by");
 app.use(express.static(publicDir, { extensions: ["html"] }));
 
-app.get("*", (_req, res) => {
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
+
+app.use((_req, res) => {
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
