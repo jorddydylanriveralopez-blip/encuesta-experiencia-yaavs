@@ -33,26 +33,11 @@ El sitio quedará en tu dominio `.hostingersite.com`.
 
 ## Conectar Google Sheets
 
-1. Crea un [Google Sheet](https://sheets.google.com) nuevo (ej. `Encuesta NPS YAAVS`).
-2. **Extensiones → Apps Script**.
-3. Borra el código por defecto y pega todo el contenido de `scripts/nps-apps-script.gs`.
-4. Guarda el proyecto.
-5. **Implementar → Nueva implementación → Tipo: Aplicación web**
-   - Ejecutar como: **Yo**
-   - Quién tiene acceso: **Cualquiera**
-6. Copia la URL que termina en `/exec`.
-7. Pégala en `public/config.js`:
+Ya está conectado. Las respuestas caen en:
 
-```js
-window.YAAVS_NPS_CONFIG = {
-  endpoint: "https://script.google.com/macros/s/XXXX/exec",
-  sheetName: "Respuestas NPS",
-};
-```
+https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpLUBM/edit
 
-8. Recarga el formulario y envía una prueba. Debe aparecer una fila en la hoja **Respuestas NPS**.
-
-Si editas el Apps Script después, vuelve a **Implementar → Administrar implementaciones → Editar → Nueva versión**.
+Config: `public/config.js` (`mode: "google-forms"`).
 
 ## Qué incluye el formulario
 
