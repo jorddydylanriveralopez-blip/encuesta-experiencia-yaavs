@@ -110,7 +110,7 @@
   }
 
   const state = {
-    stepId: hasAlreadySubmitted() ? "already" : "welcome",
+    stepId: window.__YAAVS_NPS_LOCKED__ || hasAlreadySubmitted() ? "already" : "welcome",
     submitting: false,
     answers: {
       clave: "",
