@@ -12,6 +12,14 @@ const dataFile = path.join(dataDir, "responses.json");
 const DEFAULT_SHEETS_URL =
   "https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpLUBM/gviz/tq?tqx=out:json&sheet=Form%20Responses%201";
 const SHEETS_LIVE_URL = String(process.env.SHEETS_LIVE_URL || DEFAULT_SHEETS_URL).trim();
+// Reinicio: ignora respuestas de prueba anteriores a este momento.
+const RESPONSES_SINCE = String(
+  process.env.RESPONSES_SINCE || "2026-08-08T18:50:00.000Z"
+).trim();
+const RESPONSES_SINCE_MS = (() => {
+  const t = Date.parse(RESPONSES_SINCE);
+  return Number.isFinite(t) ? t : 0;
+})();
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
@@ -73,10 +81,18 @@ function fingerprint(r) {
   return [r.clave, r.nps, r.motivo, r.receivedAt || r.timestamp].join("|").toLowerCase();
 }
 
+function isAfterReset(r) {
+  if (!RESPONSES_SINCE_MS) return true;
+  const t = Date.parse(r.receivedAt || r.timestamp || 0);
+  if (!Number.isFinite(t)) return false;
+  return t >= RESPONSES_SINCE_MS;
+}
+
 function mergeResponses(localList, remoteList) {
   const map = new Map();
   [...remoteList, ...localList].forEach((item) => {
     const n = normalizeResponse(item);
+    if (!isAfterReset(n)) return;
     const key = n.id.startsWith("sheet_") ? n.id : fingerprint(n);
     if (!map.has(key)) map.set(key, n);
   });
@@ -246,12 +262,17 @@ app.get("/api/responses", async (_req, res) => {
 app.post("/api/responses", async (req, res) => {
   try {
     const entry = normalizeResponse(req.body || {});
+    // Asegura que nuevas respuestas queden después del reinicio.
+    if (!isAfterReset(entry)) {
+      entry.receivedAt = new Date().toISOString();
+      entry.timestamp = entry.receivedAt;
+    }
     const clave = String(entry.clave || "").trim().toLowerCase();
-    const list = readResponses();
+    const list = readResponses().filter(isAfterReset);
     const remote = await fetchSheetsLive();
     const known = mergeResponses(list, remote);
 
-    // Una respuesta por clave YAAVSER (local + Sheets).
+    // Una respuesta por clave YAAVSER (local + Sheets, solo desde el reinicio).
     if (clave) {
       const exists = known.some((r) => String(r.clave || "").trim().toLowerCase() === clave);
       if (exists) {
@@ -268,6 +289,15 @@ app.post("/api/responses", async (req, res) => {
     res.status(201).json({ ok: true, id: entry.id });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message || "No se pudo guardar" });
+  }
+});
+
+app.delete("/api/responses", (_req, res) => {
+  try {
+    writeResponses([]);
+    res.json({ ok: true, cleared: true, since: RESPONSES_SINCE });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message || "No se pudo limpiar" });
   }
 });
 
