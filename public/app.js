@@ -265,7 +265,7 @@
       case "antiguedad":
         return !!a.antiguedad;
       case "mejoraGeneral":
-        return a.mejoraGeneral.length <= 700;
+        return a.mejoraGeneral.trim().length > 0 && a.mejoraGeneral.length <= 700;
       default:
         return true;
     }
