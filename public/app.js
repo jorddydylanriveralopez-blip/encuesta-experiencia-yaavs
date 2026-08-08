@@ -637,12 +637,17 @@
     `);
   }
 
+  function visibleValue(v) {
+    if (v === null || v === undefined) return "No aplica";
+    const s = String(v).trim();
+    return s === "" ? "No aplica" : s;
+  }
+
   function buildPayload() {
     const a = state.answers;
-    const matrix = {};
-    MATRIX_ROWS.forEach((r) => {
-      matrix[r.label] = a.mesaMatrix[r.key] ?? "";
-    });
+    const mesaSi = a.mesaUso === "Sí";
+    const recargaSi = a.recargaUso === "Sí";
+    const popSi = a.popUso === "Sí";
 
     return {
       timestamp: new Date().toISOString(),
@@ -651,19 +656,19 @@
       motivo: a.motivo.trim(),
       ejecutivo: a.ejecutivo,
       mesaUso: a.mesaUso,
-      mesa_soporte: a.mesaMatrix.soporte ?? "",
-      mesa_espera: a.mesaMatrix.espera ?? "",
-      mesa_resolucion: a.mesaMatrix.resolucion ?? "",
-      mesa_amabilidad: a.mesaMatrix.amabilidad ?? "",
-      mesa_conocimiento: a.mesaMatrix.conocimiento ?? "",
-      mesa_trato: a.mesaMatrix.trato ?? "",
-      mesaMejoras: a.mesaMejoras.join(" | "),
+      mesa_soporte: mesaSi ? a.mesaMatrix.soporte : "No aplica",
+      mesa_espera: mesaSi ? a.mesaMatrix.espera : "No aplica",
+      mesa_resolucion: mesaSi ? a.mesaMatrix.resolucion : "No aplica",
+      mesa_amabilidad: mesaSi ? a.mesaMatrix.amabilidad : "No aplica",
+      mesa_conocimiento: mesaSi ? a.mesaMatrix.conocimiento : "No aplica",
+      mesa_trato: mesaSi ? a.mesaMatrix.trato : "No aplica",
+      mesaMejoras: mesaSi ? a.mesaMejoras.join(" | ") || "No aplica" : "No aplica",
       recargaUso: a.recargaUso,
-      recargaExp: a.recargaExp ?? "",
-      recargaMejora: a.recargaMejora ?? "",
+      recargaExp: recargaSi ? a.recargaExp ?? "No aplica" : "No aplica",
+      recargaMejora: recargaSi ? a.recargaMejora ?? "No aplica" : "No aplica",
       popUso: a.popUso,
-      popSat: a.popSat ?? "",
-      popMejora: a.popMejora ?? "",
+      popSat: popSi ? a.popSat ?? "No aplica" : "No aplica",
+      popMejora: popSi ? a.popMejora ?? "No aplica" : "No aplica",
       rentabilidad: a.rentabilidad,
       antiguedad: a.antiguedad,
       mejoraGeneral: a.mejoraGeneral.trim(),
@@ -674,27 +679,27 @@
 
   function formatPayloadForSheet(payload) {
     return [
-      `Clave: ${payload.clave}`,
-      `NPS: ${payload.nps}`,
-      `Motivo: ${payload.motivo}`,
-      `Ejecutivo: ${payload.ejecutivo}`,
-      `Mesa uso: ${payload.mesaUso}`,
-      `Mesa soporte: ${payload.mesa_soporte}`,
-      `Mesa espera: ${payload.mesa_espera}`,
-      `Mesa resolución: ${payload.mesa_resolucion}`,
-      `Mesa amabilidad: ${payload.mesa_amabilidad}`,
-      `Mesa conocimiento: ${payload.mesa_conocimiento}`,
-      `Mesa trato: ${payload.mesa_trato}`,
-      `Mesa mejoras: ${payload.mesaMejoras}`,
-      `RecargaKlic uso: ${payload.recargaUso}`,
-      `RecargaKlic exp: ${payload.recargaExp}`,
-      `RecargaKlic mejora: ${payload.recargaMejora}`,
-      `POP uso: ${payload.popUso}`,
-      `POP sat: ${payload.popSat}`,
-      `POP mejora: ${payload.popMejora}`,
-      `Rentabilidad: ${payload.rentabilidad}`,
-      `Antigüedad: ${payload.antiguedad}`,
-      `Mejora general: ${payload.mejoraGeneral}`,
+      `Clave: ${visibleValue(payload.clave)}`,
+      `NPS: ${visibleValue(payload.nps)}`,
+      `Motivo: ${visibleValue(payload.motivo)}`,
+      `Ejecutivo: ${visibleValue(payload.ejecutivo)}`,
+      `Mesa uso: ${visibleValue(payload.mesaUso)}`,
+      `Mesa soporte: ${visibleValue(payload.mesa_soporte)}`,
+      `Mesa espera: ${visibleValue(payload.mesa_espera)}`,
+      `Mesa resolución: ${visibleValue(payload.mesa_resolucion)}`,
+      `Mesa amabilidad: ${visibleValue(payload.mesa_amabilidad)}`,
+      `Mesa conocimiento: ${visibleValue(payload.mesa_conocimiento)}`,
+      `Mesa trato: ${visibleValue(payload.mesa_trato)}`,
+      `Mesa mejoras: ${visibleValue(payload.mesaMejoras)}`,
+      `RecargaKlic uso: ${visibleValue(payload.recargaUso)}`,
+      `RecargaKlic exp: ${visibleValue(payload.recargaExp)}`,
+      `RecargaKlic mejora: ${visibleValue(payload.recargaMejora)}`,
+      `POP uso: ${visibleValue(payload.popUso)}`,
+      `POP sat: ${visibleValue(payload.popSat)}`,
+      `POP mejora: ${visibleValue(payload.popMejora)}`,
+      `Rentabilidad: ${visibleValue(payload.rentabilidad)}`,
+      `Antigüedad: ${visibleValue(payload.antiguedad)}`,
+      `Mejora general: ${visibleValue(payload.mejoraGeneral)}`,
       `JSON: ${JSON.stringify(payload)}`,
     ].join("\n");
   }
@@ -750,6 +755,17 @@
         prev.push(payload);
         localStorage.setItem(key, JSON.stringify(prev));
         showToast("Guardado en modo demo (sin endpoint de Sheets)");
+      }
+
+      // También guarda en el panel del servidor (una por una).
+      try {
+        await fetch("/api/responses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (_) {
+        // Sheets ya se envió; el panel es secundario.
       }
 
       state.submitting = false;

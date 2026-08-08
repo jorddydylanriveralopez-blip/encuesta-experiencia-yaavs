@@ -12,6 +12,8 @@ npm start
 
 Abre http://localhost:3000
 
+**Panel de respuestas (una por una):** http://localhost:3000/panel
+
 Sin endpoint configurado, las respuestas se guardan en `localStorage` (modo demo).
 
 ## Deploy en Hostinger (Node.js)
@@ -31,6 +33,9 @@ En **Revisa los ajustes de compilación**:
 Luego pulsa **Implementar**.
 El sitio quedará en tu dominio `.hostingersite.com`.
 
+Formulario: `https://gray-manatee-704328.hostingersite.com/`  
+Panel: `https://gray-manatee-704328.hostingersite.com/panel`
+
 ## Conectar Google Sheets
 
 Ya está conectado. Las respuestas caen en:
@@ -39,6 +44,7 @@ https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpL
 
 Config: `public/config.js` (`mode: "google-forms"`).
 
+Cada envío también se guarda en el servidor para el **panel** (`/panel`), donde puedes revisar las respuestas una por una con Anterior / Siguiente.
 ## Qué incluye el formulario
 
 - Clave YAAVSER

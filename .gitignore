@@ -1,6 +1,4 @@
-.DS_Store
 node_modules/
-.env
-.env.*
-!.env.example
-gas/
+data/responses.json
+.DS_Store
+*.log
