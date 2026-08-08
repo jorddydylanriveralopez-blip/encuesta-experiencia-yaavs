@@ -200,3 +200,58 @@ function parsePayload_(raw) {
   });
   return out;
 }
+
+/**
+ * API JSON para el panel de resultados en vivo.
+ * Deploy → Nueva implementación → Aplicación web
+ * Ejecutar como: Yo | Quién tiene acceso: Cualquiera
+ */
+function doGet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var source = ss.getSheetByName("Form Responses 1") || ss.getSheets()[0];
+  var last = source.getLastRow();
+  var responses = [];
+
+  for (var row = 2; row <= last; row++) {
+    var ts = source.getRange(row, 1).getValue();
+    var raw = String(source.getRange(row, 2).getValue() || "");
+    if (!String(raw).trim()) continue;
+    var p = parsePayload_(raw);
+    // Saltar filas de prueba cortas sin NPS
+    if (!p.nps && !p.clave && String(raw).indexOf("Clave:") < 0 && String(raw).charAt(0) !== "{") {
+      continue;
+    }
+    var iso = ts instanceof Date ? ts.toISOString() : String(ts || new Date().toISOString());
+    responses.push({
+      id: "sheet_" + row + "_" + String(p.clave || row),
+      receivedAt: iso,
+      timestamp: iso,
+      clave: p.clave || "",
+      nps: p.nps || "",
+      motivo: p.motivo || "",
+      ejecutivo: p.ejecutivo || "",
+      mesaUso: p.mesaUso || "",
+      mesa_soporte: p.mesa_soporte || "",
+      mesa_espera: p.mesa_espera || "",
+      mesa_resolucion: p.mesa_resolucion || "",
+      mesa_amabilidad: p.mesa_amabilidad || "",
+      mesa_conocimiento: p.mesa_conocimiento || "",
+      mesa_trato: p.mesa_trato || "",
+      mesaMejoras: p.mesaMejoras || "",
+      recargaUso: p.recargaUso || "",
+      recargaExp: p.recargaExp || "",
+      recargaMejora: p.recargaMejora || "",
+      popUso: p.popUso || "",
+      popSat: p.popSat || "",
+      popMejora: p.popMejora || "",
+      rentabilidad: p.rentabilidad || "",
+      antiguedad: p.antiguedad || "",
+      mejoraGeneral: p.mejoraGeneral || "",
+    });
+  }
+
+  responses.reverse();
+  return ContentService.createTextOutput(
+    JSON.stringify({ ok: true, count: responses.length, responses: responses })
+  ).setMimeType(ContentService.MimeType.JSON);
+}

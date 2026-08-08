@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f2440" />
+    <title>Resultados en vivo · YAAVS</title>
+    <link rel="icon" href="./favicon.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./resultados.css" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true">
+      <div class="orb orb-a"></div>
+      <div class="orb orb-b"></div>
+    </div>
+
+    <header class="topbar">
+      <div class="brand-block">
+        <img src="./assets/logo-yaavs.png" alt="YAAVS" width="120" height="36" />
+        <div>
+          <h1>Resultados en vivo</h1>
+          <p class="live-line">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span id="liveStatus">Conectando…</span>
+          </p>
+        </div>
+      </div>
+      <a class="ghost-link" href="./">Cuestionario</a>
+    </header>
+
+    <main class="layout">
+      <section class="kpis" id="kpis"></section>
+
+      <section class="split">
+        <article class="card detail-card" id="detailCard">
+          <p class="muted">Cargando respuestas…</p>
+        </article>
+
+        <aside class="card stats-card" id="statsCard"></aside>
+      </section>
+    </main>
+
+    <script src="./resultados.js" defer></script>
+  </body>
+</html>

@@ -12,7 +12,7 @@ npm start
 
 Abre http://localhost:3000
 
-**Panel de respuestas (una por una):** http://localhost:3000/panel
+**App de resultados en vivo (aparte):** http://localhost:3000/resultados
 
 Sin endpoint configurado, las respuestas se guardan en `localStorage` (modo demo).
 
@@ -34,7 +34,7 @@ Luego pulsa **Implementar**.
 El sitio quedará en tu dominio `.hostingersite.com`.
 
 Formulario: `https://gray-manatee-704328.hostingersite.com/`  
-Panel: `https://gray-manatee-704328.hostingersite.com/panel`
+Resultados en vivo: `https://gray-manatee-704328.hostingersite.com/resultados`
 
 ## Conectar Google Sheets
 
@@ -44,7 +44,11 @@ https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpL
 
 Config: `public/config.js` (`mode: "google-forms"`).
 
-Cada envío también se guarda en el servidor para el **panel** (`/panel`), donde puedes revisar las respuestas una por una con Anterior / Siguiente.
+Cada envío también se guarda en el servidor para la **app de resultados** (`/resultados`):
+resumen NPS + cada respuesta una por una, con actualización automática en vivo.
+
+Opcional (Sheets en vivo): en Apps Script del Sheet, agrega/actualiza `doGet` de `scripts/expand-responses.gs`,
+despliega como **Aplicación web** (Cualquiera) y pon la URL en Hostinger como variable `SHEETS_LIVE_URL`.
 ## Qué incluye el formulario
 
 - Clave YAAVSER
