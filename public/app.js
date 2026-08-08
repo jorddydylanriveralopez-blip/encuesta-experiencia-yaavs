@@ -599,7 +599,7 @@
       <section class="card step">
         <span class="section-tag">Sección 6 · Cierre</span>
         <h2 class="question-title">En general, ¿qué podríamos mejorar en YAAVS para ayudarte a hacer crecer tu negocio?</h2>
-        <p class="question-help">Opcional · máximo 700 caracteres.</p>
+        <p class="question-help">Obligatoria · máximo 700 caracteres.</p>
         <textarea class="field" id="mejora" maxlength="700" placeholder="Ideas, fricciones o lo que te gustaría ver…">${escapeHtml(
           state.answers.mejoraGeneral
         )}</textarea>
