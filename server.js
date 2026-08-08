@@ -114,7 +114,21 @@ app.get("/api/responses", async (_req, res) => {
 app.post("/api/responses", (req, res) => {
   try {
     const entry = normalizeResponse(req.body || {});
+    const clave = String(entry.clave || "").trim().toLowerCase();
     const list = readResponses();
+
+    // Una respuesta por clave YAAVSER (evita reenvíos / "Nueva respuesta").
+    if (clave) {
+      const exists = list.some((r) => String(r.clave || "").trim().toLowerCase() === clave);
+      if (exists) {
+        return res.status(409).json({
+          ok: false,
+          error: "Esta clave ya envió la encuesta",
+          code: "already_submitted",
+        });
+      }
+    }
+
     list.push(entry);
     writeResponses(list);
     res.status(201).json({ ok: true, id: entry.id });

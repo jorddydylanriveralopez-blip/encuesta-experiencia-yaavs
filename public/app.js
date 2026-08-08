@@ -79,18 +79,33 @@
 
   const SUBMIT_LOCK_KEY = "yaavs_nps_submitted_v1";
 
-  function hasAlreadySubmitted() {
+  function readCookie(name) {
     try {
-      return localStorage.getItem(SUBMIT_LOCK_KEY) === "1";
+      const m = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "=([^;]*)"));
+      return m ? decodeURIComponent(m[1]) : "";
     } catch (_) {
-      return false;
+      return "";
     }
   }
 
+  function hasAlreadySubmitted() {
+    try {
+      if (localStorage.getItem(SUBMIT_LOCK_KEY) === "1") return true;
+      if (sessionStorage.getItem(SUBMIT_LOCK_KEY) === "1") return true;
+    } catch (_) {}
+    return readCookie(SUBMIT_LOCK_KEY) === "1";
+  }
+
   function markSubmitted() {
+    const at = new Date().toISOString();
     try {
       localStorage.setItem(SUBMIT_LOCK_KEY, "1");
-      localStorage.setItem(`${SUBMIT_LOCK_KEY}_at`, new Date().toISOString());
+      localStorage.setItem(`${SUBMIT_LOCK_KEY}_at`, at);
+      sessionStorage.setItem(SUBMIT_LOCK_KEY, "1");
+    } catch (_) {}
+    try {
+      // 1 año — refuerzo por si limpian solo localStorage
+      document.cookie = `${SUBMIT_LOCK_KEY}=1; Max-Age=31536000; Path=/; SameSite=Lax`;
     } catch (_) {}
   }
 
@@ -294,12 +309,6 @@
     root.querySelectorAll("[data-action='next']").forEach((b) => b.addEventListener("click", () => go(1)));
     root.querySelectorAll("[data-action='submit']").forEach((b) =>
       b.addEventListener("click", () => submitForm())
-    );
-    root.querySelectorAll("[data-action='restart']").forEach((b) =>
-      b.addEventListener("click", () => {
-        // Bloqueado a propósito: solo una respuesta por dispositivo/navegador.
-        showToast("Ya enviaste tus respuestas. Gracias.");
-      })
     );
   }
 
@@ -751,6 +760,14 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (panelRes.status === 409) {
+        markSubmitted();
+        state.submitting = false;
+        state.stepId = "already";
+        state._lastError = null;
+        render();
+        return;
+      }
       if (!panelRes.ok) {
         throw new Error("No se pudo guardar en el panel de resultados");
       }
