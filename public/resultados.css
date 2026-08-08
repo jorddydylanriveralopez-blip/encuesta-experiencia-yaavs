@@ -360,6 +360,19 @@ body {
   font-size: 0.86rem;
 }
 
+.bar-row-score {
+  grid-template-columns: minmax(7.5rem, 42%) 1fr 2.1rem;
+}
+
+.bar-row-score > span {
+  line-height: 1.25;
+}
+
+.muted-num {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .bar-track {
   height: 8px;
   border-radius: 99px;

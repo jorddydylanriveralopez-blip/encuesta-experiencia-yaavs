@@ -29,6 +29,15 @@
     ["mejoraGeneral", "Mejora general"],
   ];
 
+  const MESA_ASPECTS = [
+    ["mesa_soporte", "Soporte recibido"],
+    ["mesa_espera", "Tiempo de espera"],
+    ["mesa_resolucion", "Resolución de dudas"],
+    ["mesa_amabilidad", "Amabilidad y empatía"],
+    ["mesa_conocimiento", "Conocimiento del agente"],
+    ["mesa_trato", "Trato recibido"],
+  ];
+
   const state = {
     responses: [],
     index: 0,
@@ -68,6 +77,14 @@
     }
   }
 
+  function avgNumeric(list, key) {
+    const nums = list
+      .map((r) => Number(r[key]))
+      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
+    if (!nums.length) return null;
+    return nums.reduce((a, b) => a + b, 0) / nums.length;
+  }
+
   function computeStats(list) {
     const scores = list.map((r) => Number(r.nps)).filter((n) => Number.isFinite(n));
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
@@ -84,6 +101,12 @@
 
     const countYes = (key) => list.filter((r) => String(r[key] || "").toLowerCase().startsWith("s")).length;
 
+    const mesaAspects = MESA_ASPECTS.map(([key, label]) => ({
+      key,
+      label,
+      avg: avgNumeric(list, key),
+    }));
+
     return {
       total: list.length,
       avg,
@@ -94,6 +117,7 @@
       mesa: countYes("mesaUso"),
       recarga: countYes("recargaUso"),
       pop: countYes("popUso"),
+      mesaAspects,
     };
   }
 
@@ -104,6 +128,26 @@
         <span>${esc(label)}</span>
         <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
         <strong>${count}</strong>
+      </div>
+    `;
+  }
+
+  function scoreBar(label, avg) {
+    if (avg == null) {
+      return `
+        <div class="bar-row bar-row-score">
+          <span>${esc(label)}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>
+          <strong class="muted-num">—</strong>
+        </div>
+      `;
+    }
+    const pct = Math.max(0, Math.min(100, Math.round((avg / 5) * 100)));
+    return `
+      <div class="bar-row bar-row-score">
+        <span>${esc(label)}</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <strong>${avg.toFixed(1)}</strong>
       </div>
     `;
   }
@@ -135,6 +179,7 @@
 
   function renderStats(stats) {
     const t = stats.total || 1;
+    const mesaBars = (stats.mesaAspects || []).map((a) => scoreBar(a.label, a.avg)).join("");
     statsEl.innerHTML = `
       <h2>Resumen por pregunta</h2>
       <div class="stat-block">
@@ -148,6 +193,10 @@
         ${bar("Mesa de Control", stats.mesa, t)}
         ${bar("RecargaKlic", stats.recarga, t)}
         ${bar("Material POP", stats.pop, t)}
+      </div>
+      <div class="stat-block">
+        <h3>Mesa de Control · promedio 1–5</h3>
+        ${mesaBars || `<p class="muted" style="margin:0;font-size:0.85rem">Sin calificaciones aún.</p>`}
       </div>
       <p class="muted" style="margin:0;font-size:0.85rem">Se actualiza solo cada pocos segundos.</p>
     `;
