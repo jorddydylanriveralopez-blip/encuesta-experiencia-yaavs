@@ -77,8 +77,25 @@
     { value: 5, label: "Muy rentable" },
   ];
 
+  const SUBMIT_LOCK_KEY = "yaavs_nps_submitted_v1";
+
+  function hasAlreadySubmitted() {
+    try {
+      return localStorage.getItem(SUBMIT_LOCK_KEY) === "1";
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function markSubmitted() {
+    try {
+      localStorage.setItem(SUBMIT_LOCK_KEY, "1");
+      localStorage.setItem(`${SUBMIT_LOCK_KEY}_at`, new Date().toISOString());
+    } catch (_) {}
+  }
+
   const state = {
-    stepId: "welcome",
+    stepId: hasAlreadySubmitted() ? "already" : "welcome",
     submitting: false,
     answers: {
       clave: "",
@@ -169,7 +186,7 @@
   function updateProgress() {
     const steps = getVisibleSteps().filter((s) => s.id !== "welcome" && s.id !== "done");
     const idx = steps.findIndex((s) => s.id === state.stepId);
-    const show = state.stepId !== "welcome" && state.stepId !== "done";
+    const show = state.stepId !== "welcome" && state.stepId !== "done" && state.stepId !== "already";
     progressWrap.hidden = !show;
     if (!show) return;
 
@@ -280,27 +297,8 @@
     );
     root.querySelectorAll("[data-action='restart']").forEach((b) =>
       b.addEventListener("click", () => {
-        Object.assign(state.answers, {
-          clave: "",
-          nps: null,
-          motivo: "",
-          ejecutivo: null,
-          mesaUso: null,
-          mesaMatrix: {},
-          mesaMejoras: [],
-          recargaUso: null,
-          recargaExp: null,
-          recargaMejora: null,
-          popUso: null,
-          popSat: null,
-          popMejora: null,
-          rentabilidad: null,
-          antiguedad: null,
-          mejoraGeneral: "",
-          website: "",
-        });
-        state.stepId = "welcome";
-        render();
+        // Bloqueado a propósito: solo una respuesta por dispositivo/navegador.
+        showToast("Ya enviaste tus respuestas. Gracias.");
       })
     );
   }
@@ -630,9 +628,20 @@
         <div class="success-icon">✓</div>
         <h2 class="question-title">¡Gracias por compartir tu experiencia!</h2>
         <p class="lead">Tus respuestas ya quedaron registradas. En YAAVS las usamos para mejorar lo que más importa para tu negocio.</p>
-        <div class="actions" style="justify-content:center">
-          <button type="button" class="btn btn-ghost" data-action="restart">Nueva respuesta</button>
-        </div>
+        <p class="lead" style="margin-top:0.75rem">Esta encuesta solo se puede contestar una vez desde este dispositivo.</p>
+      </section>
+    `);
+  }
+
+  function renderAlreadySubmitted() {
+    return el(`
+      <section class="card success step">
+        <div class="success-icon">✓</div>
+        <h2 class="question-title">Ya respondiste esta encuesta</h2>
+        <p class="lead">
+          Gracias. Desde este navegador ya se envió una respuesta y no se puede volver a contestar
+          para no duplicar resultados.
+        </p>
       </section>
     `);
   }
@@ -722,6 +731,11 @@
   }
 
   async function submitForm() {
+    if (hasAlreadySubmitted()) {
+      state.stepId = "already";
+      render();
+      return;
+    }
     if (!canContinue("mejoraGeneral") || state.submitting) return;
     state.submitting = true;
     render();
@@ -731,6 +745,16 @@
     const endpoint = String(cfg.endpoint || "").trim();
 
     try {
+      // Primero al panel (tiempo real), luego a Sheets.
+      const panelRes = await fetch("/api/responses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!panelRes.ok) {
+        throw new Error("No se pudo guardar en el panel de resultados");
+      }
+
       if (mode === "google-forms" || cfg.formAction) {
         await submitToGoogleForms(payload);
       } else if (endpoint) {
@@ -749,25 +773,9 @@
           } catch (_) {}
           throw new Error(message);
         }
-      } else {
-        const key = "yaavs_nps_demo_submissions";
-        const prev = JSON.parse(localStorage.getItem(key) || "[]");
-        prev.push(payload);
-        localStorage.setItem(key, JSON.stringify(prev));
-        showToast("Guardado en modo demo (sin endpoint de Sheets)");
       }
 
-      // También guarda en el panel del servidor (una por una).
-      try {
-        await fetch("/api/responses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } catch (_) {
-        // Sheets ya se envió; el panel es secundario.
-      }
-
+      markSubmitted();
       state.submitting = false;
       state.stepId = "done";
       state._lastError = null;
@@ -786,6 +794,9 @@
     let node;
 
     switch (id) {
+      case "already":
+        node = renderAlreadySubmitted();
+        break;
       case "welcome":
         node = renderWelcome();
         break;
