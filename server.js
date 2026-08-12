@@ -290,14 +290,14 @@ app.post("/api/responses", async (req, res) => {
     const remote = await fetchSheetsLive();
     const known = mergeResponses(list, remote);
 
-    // Una respuesta por clave YAAVSER (local + Sheets, solo set visible).
+    // Hasta 2 respuestas por clave YAAVSER (corrección + envío final).
     if (clave) {
-      const exists = known.some((r) => String(r.clave || "").trim().toLowerCase() === clave);
-      if (exists) {
+      const sameClave = known.filter((r) => String(r.clave || "").trim().toLowerCase() === clave);
+      if (sameClave.length >= 2) {
         return res.status(409).json({
           ok: false,
-          error: "Esta clave ya envió la encuesta",
-          code: "already_submitted",
+          error: "Esta clave ya envió el máximo de 2 respuestas",
+          code: "limit_reached",
         });
       }
     }

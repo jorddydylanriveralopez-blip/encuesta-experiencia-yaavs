@@ -42,15 +42,22 @@
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
     <script>
-      // Candado temprano: si ya contestó, no carga el cuestionario otra vez.
+      // Candado temprano: solo bloquea al llegar al máximo de 2 envíos.
       (function () {
-        var KEY = "yaavs_nps_submitted_v1";
-        var locked = false;
+        var COUNT_KEY = "yaavs_nps_submit_count_v2";
+        var LEGACY = "yaavs_nps_submitted_v1";
+        var MAX = 2;
+        var count = 0;
         try {
-          locked = localStorage.getItem(KEY) === "1" || sessionStorage.getItem(KEY) === "1";
+          count = Number(localStorage.getItem(COUNT_KEY) || sessionStorage.getItem(COUNT_KEY) || 0) || 0;
+          if (!count && (localStorage.getItem(LEGACY) === "1" || sessionStorage.getItem(LEGACY) === "1")) count = 1;
         } catch (e) {}
-        if (!locked && /(?:^|; )yaavs_nps_submitted_v1=1(?:;|$)/.test(document.cookie)) locked = true;
-        if (!locked) return;
+        if (!count) {
+          var m = document.cookie.match(/(?:^|; )yaavs_nps_submit_count_v2=([^;]*)/);
+          if (m) count = Number(decodeURIComponent(m[1])) || 0;
+          else if (/(?:^|; )yaavs_nps_submitted_v1=1(?:;|$)/.test(document.cookie)) count = 1;
+        }
+        if (count < MAX) return;
         document.addEventListener("DOMContentLoaded", function () {
           var app = document.getElementById("app");
           if (!app) return;
@@ -58,13 +65,13 @@
             '<section class="card success step">' +
             '<div class="success-icon">✓</div>' +
             '<h2 class="question-title">Ya respondiste esta encuesta</h2>' +
-            '<p class="lead">Desde este navegador ya se envió una respuesta y no se puede volver a contestar.</p>' +
+            '<p class="lead">Desde este navegador ya se enviaron las 2 respuestas permitidas y no se puede volver a contestar.</p>' +
             "</section>";
         });
         window.__YAAVS_NPS_LOCKED__ = true;
       })();
     </script>
-    <script src="./config.js?v=20260808c"></script>
-    <script src="./app.js?v=20260808c" defer></script>
+    <script src="./config.js?v=20260812d"></script>
+    <script src="./app.js?v=20260812d" defer></script>
   </body>
 </html>

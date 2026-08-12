@@ -77,7 +77,9 @@
     { value: 5, label: "Muy rentable" },
   ];
 
-  const SUBMIT_LOCK_KEY = "yaavs_nps_submitted_v1";
+  const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
+  const SUBMIT_LOCK_LEGACY = "yaavs_nps_submitted_v1";
+  const MAX_SUBMISSIONS = 2;
 
   function readCookie(name) {
     try {
@@ -88,29 +90,82 @@
     }
   }
 
-  function hasAlreadySubmitted() {
+  function getSubmitCount() {
     try {
-      if (localStorage.getItem(SUBMIT_LOCK_KEY) === "1") return true;
-      if (sessionStorage.getItem(SUBMIT_LOCK_KEY) === "1") return true;
+      const raw = localStorage.getItem(SUBMIT_COUNT_KEY) || sessionStorage.getItem(SUBMIT_COUNT_KEY);
+      const n = Number(raw);
+      if (Number.isFinite(n) && n >= 0) return Math.min(n, MAX_SUBMISSIONS);
     } catch (_) {}
-    return readCookie(SUBMIT_LOCK_KEY) === "1";
+    const cookieCount = Number(readCookie(SUBMIT_COUNT_KEY));
+    if (Number.isFinite(cookieCount) && cookieCount >= 0) return Math.min(cookieCount, MAX_SUBMISSIONS);
+    // Migración del candado viejo (1 envío) → cuenta 1 (aún pueden hacer la 2ª).
+    try {
+      if (localStorage.getItem(SUBMIT_LOCK_LEGACY) === "1" || sessionStorage.getItem(SUBMIT_LOCK_LEGACY) === "1") {
+        return 1;
+      }
+    } catch (_) {}
+    if (readCookie(SUBMIT_LOCK_LEGACY) === "1") return 1;
+    return 0;
+  }
+
+  function hasReachedLimit() {
+    return getSubmitCount() >= MAX_SUBMISSIONS;
+  }
+
+  function canSubmitAgain() {
+    return getSubmitCount() < MAX_SUBMISSIONS;
   }
 
   function markSubmitted() {
+    const next = Math.min(getSubmitCount() + 1, MAX_SUBMISSIONS);
     const at = new Date().toISOString();
     try {
-      localStorage.setItem(SUBMIT_LOCK_KEY, "1");
-      localStorage.setItem(`${SUBMIT_LOCK_KEY}_at`, at);
-      sessionStorage.setItem(SUBMIT_LOCK_KEY, "1");
+      localStorage.setItem(SUBMIT_COUNT_KEY, String(next));
+      localStorage.setItem(`${SUBMIT_COUNT_KEY}_at`, at);
+      sessionStorage.setItem(SUBMIT_COUNT_KEY, String(next));
+      // Limpia candado legacy para no bloquear la 2ª vez.
+      localStorage.removeItem(SUBMIT_LOCK_LEGACY);
+      sessionStorage.removeItem(SUBMIT_LOCK_LEGACY);
     } catch (_) {}
     try {
-      // 1 año — refuerzo por si limpian solo localStorage
-      document.cookie = `${SUBMIT_LOCK_KEY}=1; Max-Age=31536000; Path=/; SameSite=Lax`;
+      document.cookie = `${SUBMIT_COUNT_KEY}=${next}; Max-Age=31536000; Path=/; SameSite=Lax`;
+      document.cookie = `${SUBMIT_LOCK_LEGACY}=; Max-Age=0; Path=/; SameSite=Lax`;
     } catch (_) {}
+    return next;
+  }
+
+  function resetAnswers() {
+    Object.assign(state.answers, {
+      clave: "",
+      nps: null,
+      motivo: "",
+      ejecutivo: null,
+      mesaUso: null,
+      mesaMatrix: {},
+      mesaMejoras: [],
+      recargaUso: null,
+      recargaExp: null,
+      recargaMejora: null,
+      popUso: null,
+      popSat: null,
+      popMejora: null,
+      rentabilidad: null,
+      antiguedad: null,
+      mejoraGeneral: "",
+      website: "",
+    });
+    state._lastError = null;
+    state.submitting = false;
+  }
+
+  function confirmSecondAttempt() {
+    return window.confirm(
+      "¿Seguro que quieres contestar el cuestionario una segunda vez?\n\nSolo puedes hacerlo 2 veces. Úsalo si te equivocaste en la primera respuesta."
+    );
   }
 
   const state = {
-    stepId: window.__YAAVS_NPS_LOCKED__ || hasAlreadySubmitted() ? "already" : "welcome",
+    stepId: window.__YAAVS_NPS_LOCKED__ || hasReachedLimit() ? "already" : "welcome",
     submitting: false,
     answers: {
       clave: "",
@@ -279,6 +334,10 @@
     if (delta > 0 && !canContinue(state.stepId)) {
       showToast("Completa este paso para continuar");
       return;
+    }
+    // Segunda vez: advertencia al salir del inicio.
+    if (delta > 0 && state.stepId === "welcome" && getSubmitCount() === 1) {
+      if (!confirmSecondAttempt()) return;
     }
     state.stepId = next.id;
     render();
@@ -632,12 +691,21 @@
       `);
     }
 
+    const count = getSubmitCount();
+    const canRetry = count < MAX_SUBMISSIONS;
     return el(`
       <section class="card success step">
         <div class="success-icon">✓</div>
         <h2 class="question-title">¡Gracias por compartir tu experiencia!</h2>
         <p class="lead">Tus respuestas ya quedaron registradas. En YAAVS las usamos para mejorar lo que más importa para tu negocio.</p>
-        <p class="lead" style="margin-top:0.75rem">Esta encuesta solo se puede contestar una vez desde este dispositivo.</p>
+        ${
+          canRetry
+            ? `<p class="lead" style="margin-top:0.75rem">Si te equivocaste, puedes contestar <strong>una segunda vez</strong>.</p>
+        <div class="actions" style="justify-content:center">
+          <button type="button" class="btn btn-ghost" data-action="second-attempt">Contestar una segunda vez</button>
+        </div>`
+            : `<p class="lead" style="margin-top:0.75rem">Ya usaste tus 2 intentos desde este dispositivo.</p>`
+        }
       </section>
     `);
   }
@@ -648,8 +716,8 @@
         <div class="success-icon">✓</div>
         <h2 class="question-title">Ya respondiste esta encuesta</h2>
         <p class="lead">
-          Gracias. Desde este navegador ya se envió una respuesta y no se puede volver a contestar
-          para no duplicar resultados.
+          Gracias. Desde este navegador ya se enviaron las 2 respuestas permitidas
+          y no se puede volver a contestar.
         </p>
       </section>
     `);
@@ -740,7 +808,7 @@
   }
 
   async function submitForm() {
-    if (hasAlreadySubmitted()) {
+    if (hasReachedLimit()) {
       state.stepId = "already";
       render();
       return;
@@ -761,12 +829,19 @@
         body: JSON.stringify(payload),
       });
       if (panelRes.status === 409) {
-        markSubmitted();
-        state.submitting = false;
-        state.stepId = "already";
-        state._lastError = null;
-        render();
-        return;
+        const errJson = await panelRes.json().catch(() => ({}));
+        if (errJson && errJson.code === "limit_reached") {
+          try {
+            localStorage.setItem(SUBMIT_COUNT_KEY, String(MAX_SUBMISSIONS));
+            sessionStorage.setItem(SUBMIT_COUNT_KEY, String(MAX_SUBMISSIONS));
+          } catch (_) {}
+          state.submitting = false;
+          state.stepId = "already";
+          state._lastError = null;
+          render();
+          return;
+        }
+        throw new Error(errJson.error || "No se pudo guardar (límite de respuestas)");
       }
       if (!panelRes.ok) {
         throw new Error("No se pudo guardar en el panel de resultados");
@@ -937,6 +1012,20 @@
       backEdit.addEventListener("click", () => {
         state.stepId = "mejoraGeneral";
         state._lastError = null;
+        render();
+      });
+    }
+    const secondAttempt = node.querySelector("[data-action='second-attempt']");
+    if (secondAttempt) {
+      secondAttempt.addEventListener("click", () => {
+        if (!canSubmitAgain()) {
+          state.stepId = "already";
+          render();
+          return;
+        }
+        if (!confirmSecondAttempt()) return;
+        resetAnswers();
+        state.stepId = "welcome";
         render();
       });
     }
