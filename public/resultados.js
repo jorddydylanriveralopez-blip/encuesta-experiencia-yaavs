@@ -56,6 +56,8 @@
   const avgFill = document.getElementById("avgFill");
   const avgValue = document.getElementById("avgValue");
   const avgHint = document.getElementById("avgHint");
+  const cssDistBars = document.getElementById("cssDistBars");
+  const cssSegments = document.getElementById("cssSegments");
   const chartNpsDistEl = document.getElementById("chartNpsDist");
   const chartSegmentsEl = document.getElementById("chartSegments");
   const chartAvgTrendEl = document.getElementById("chartAvgTrend");
@@ -291,9 +293,41 @@
     return true;
   }
 
-  function renderCharts(stats) {
-    if (!ensureCharts()) return;
+  function renderCssCharts(stats) {
+    if (cssDistBars) {
+      const max = Math.max(1, ...stats.dist);
+      cssDistBars.innerHTML = stats.dist
+        .map((count, i) => {
+          const pct = Math.max(4, Math.round((count / max) * 100));
+          return `<div class="css-bar">
+            <span class="css-bar-count">${count}</span>
+            <div class="css-bar-track" style="height:${pct}%;background:${npsBarColor(i)}"></div>
+            <span class="css-bar-label">${i}</span>
+          </div>`;
+        })
+        .join("");
+    }
 
+    if (cssSegments) {
+      const total = Math.max(1, stats.promoters + stats.passives + stats.detractors);
+      const rows = [
+        ["Promotores", stats.promoters, "is-promoter"],
+        ["Pasivos", stats.passives, "is-passive"],
+        ["Detractores", stats.detractors, "is-detractor"],
+      ];
+      cssSegments.innerHTML = rows
+        .map(([label, value, cls]) => {
+          const pct = Math.round((value / total) * 100);
+          return `<div class="css-seg">
+            <div class="css-seg-top"><span>${label}</span><span>${value} · ${pct}%</span></div>
+            <div class="css-seg-track"><div class="css-seg-fill ${cls}" style="width:${pct}%"></div></div>
+          </div>`;
+        })
+        .join("");
+    }
+  }
+
+  function renderCharts(stats) {
     const pct = stats.avg == null ? 0 : Math.max(0, Math.min(100, (stats.avg / 10) * 100));
     if (avgFill) avgFill.style.width = `${pct}%`;
     if (avgValue) avgValue.textContent = stats.avg == null ? "—" : stats.avg.toFixed(1);
@@ -302,6 +336,10 @@
         ? `Con ${stats.scoresCount} calificación${stats.scoresCount === 1 ? "" : "es"}`
         : "Sin datos aún";
     }
+
+    renderCssCharts(stats);
+
+    if (!ensureCharts()) return;
 
     if (state.charts.dist) {
       state.charts.dist.data.datasets[0].data = stats.dist;

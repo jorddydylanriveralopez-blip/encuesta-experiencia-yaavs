@@ -201,11 +201,31 @@ body {
   color: var(--muted);
 }
 
+.charts-block {
+  margin-bottom: 1.15rem;
+}
+
+.charts-block-head {
+  margin: 0 0 0.75rem;
+}
+
+.charts-block-head h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.charts-block-head p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1.1fr 1.2fr 0.9fr;
   gap: 0.85rem;
-  margin-bottom: 1rem;
 }
 
 .chart-card {
@@ -217,7 +237,8 @@ body {
   min-width: 0;
 }
 
-.chart-head h2 {
+.chart-head h2,
+.chart-head h3 {
   margin: 0;
   font-family: var(--display);
   font-size: 1.05rem;
@@ -269,6 +290,97 @@ body {
   font-weight: 600;
 }
 
+.css-bars {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.35rem;
+  min-height: 160px;
+  padding: 0.35rem 0.1rem 0;
+}
+
+.css-bar {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  height: 160px;
+}
+
+.css-bar-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+
+.css-bar-track {
+  align-self: end;
+  width: 100%;
+  max-width: 28px;
+  height: 0%;
+  min-height: 4px;
+  border-radius: 8px 8px 4px 4px;
+  transition: height 0.45s var(--ease);
+}
+
+.css-bar-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.css-segments {
+  display: grid;
+  gap: 0.7rem;
+  padding-top: 0.2rem;
+}
+
+.css-seg {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.css-seg-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.css-seg-top span:last-child {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.css-seg-track {
+  height: 12px;
+  border-radius: 999px;
+  background: rgba(15, 36, 64, 0.08);
+  overflow: hidden;
+}
+
+.css-seg-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  transition: width 0.45s var(--ease);
+}
+
+.css-seg-fill.is-promoter {
+  background: #0d8a5a;
+}
+
+.css-seg-fill.is-passive {
+  background: #c47a00;
+}
+
+.css-seg-fill.is-detractor {
+  background: #c0392b;
+}
+
 .chart-canvas-wrap {
   position: relative;
   width: 100%;
@@ -281,6 +393,10 @@ body {
 .chart-canvas-wrap-donut {
   max-width: 240px;
   margin: 0 auto;
+}
+
+.chart-canvas-fallback[hidden] {
+  display: none !important;
 }
 
 @media (max-width: 1100px) {
@@ -300,6 +416,10 @@ body {
 
   .charts-grid .chart-card:first-child {
     grid-column: auto;
+  }
+
+  .css-bars {
+    gap: 0.22rem;
   }
 }
 

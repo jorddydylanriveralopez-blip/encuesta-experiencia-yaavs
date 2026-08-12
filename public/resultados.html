@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./resultados.css?v=20260812charts" />
+    <link rel="stylesheet" href="./resultados.css?v=20260812charts2" />
   </head>
   <body>
     <div class="atmosphere" aria-hidden="true">
@@ -40,45 +40,53 @@
     <main class="layout">
       <section class="kpis" id="kpis"></section>
 
-      <section class="charts-grid" aria-label="Gráficas NPS">
-        <article class="chart-card">
-          <header class="chart-head">
-            <h2>Promedio NPS</h2>
-            <p class="chart-sub">Se actualiza con cada respuesta (escala 0–10)</p>
-          </header>
-          <div class="avg-wrap">
-            <div class="avg-meter" aria-hidden="true">
-              <div class="avg-fill" id="avgFill"></div>
+      <section class="charts-block" aria-label="Gráficas NPS">
+        <header class="charts-block-head">
+          <h2>Gráficas NPS</h2>
+          <p>Se actualizan en vivo con cada respuesta</p>
+        </header>
+        <div class="charts-grid">
+          <article class="chart-card">
+            <header class="chart-head">
+              <h3>Promedio NPS</h3>
+              <p class="chart-sub">Escala 0–10 · barra y tendencia</p>
+            </header>
+            <div class="avg-wrap">
+              <div class="avg-meter" aria-hidden="true">
+                <div class="avg-fill" id="avgFill"></div>
+              </div>
+              <div class="avg-readout">
+                <strong id="avgValue">—</strong>
+                <span id="avgHint">Sin datos aún</span>
+              </div>
             </div>
-            <div class="avg-readout">
-              <strong id="avgValue">—</strong>
-              <span id="avgHint">Sin datos aún</span>
+            <div class="chart-canvas-wrap chart-canvas-wrap-sm" data-chart-optional>
+              <canvas id="chartAvgTrend" height="120"></canvas>
             </div>
-          </div>
-          <div class="chart-canvas-wrap chart-canvas-wrap-sm">
-            <canvas id="chartAvgTrend" height="120"></canvas>
-          </div>
-        </article>
+          </article>
 
-        <article class="chart-card">
-          <header class="chart-head">
-            <h2>Distribución de calificaciones</h2>
-            <p class="chart-sub">Cuántas personas eligieron cada número (0–10)</p>
-          </header>
-          <div class="chart-canvas-wrap">
-            <canvas id="chartNpsDist" height="160"></canvas>
-          </div>
-        </article>
+          <article class="chart-card">
+            <header class="chart-head">
+              <h3>Distribución de calificaciones</h3>
+              <p class="chart-sub">Cuántas personas eligieron cada número (0–10)</p>
+            </header>
+            <div class="css-bars" id="cssDistBars" role="img" aria-label="Distribución NPS 0 a 10"></div>
+            <div class="chart-canvas-wrap chart-canvas-fallback" data-chart-optional hidden>
+              <canvas id="chartNpsDist" height="160"></canvas>
+            </div>
+          </article>
 
-        <article class="chart-card">
-          <header class="chart-head">
-            <h2>Segmentos NPS</h2>
-            <p class="chart-sub">Promotores · Pasivos · Detractores</p>
-          </header>
-          <div class="chart-canvas-wrap chart-canvas-wrap-donut">
-            <canvas id="chartSegments" height="180"></canvas>
-          </div>
-        </article>
+          <article class="chart-card">
+            <header class="chart-head">
+              <h3>Segmentos NPS</h3>
+              <p class="chart-sub">Promotores · Pasivos · Detractores</p>
+            </header>
+            <div class="css-segments" id="cssSegments"></div>
+            <div class="chart-canvas-wrap chart-canvas-wrap-donut chart-canvas-fallback" data-chart-optional hidden>
+              <canvas id="chartSegments" height="180"></canvas>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="filters-bar" id="filtersBar">
@@ -128,6 +136,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="./resultados.js?v=20260812charts" defer></script>
+    <script src="./resultados.js?v=20260812charts2" defer></script>
   </body>
 </html>
