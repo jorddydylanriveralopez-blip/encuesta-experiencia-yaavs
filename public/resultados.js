@@ -77,6 +77,24 @@
     }
   }
 
+  function fingerprint(r) {
+    return [r?.clave, r?.nps, r?.motivo, r?.receivedAt || r?.timestamp]
+      .map((x) => String(x ?? "").trim().toLowerCase())
+      .join("|");
+  }
+
+  function findResponseIndex(list, prev) {
+    if (!prev || !list.length) return 0;
+    if (prev.id) {
+      const byId = list.findIndex((r) => r.id === prev.id);
+      if (byId >= 0) return byId;
+    }
+    const fp = fingerprint(prev);
+    const byFp = list.findIndex((r) => fingerprint(r) === fp);
+    if (byFp >= 0) return byFp;
+    return Math.min(state.index, list.length - 1);
+  }
+
   function avgNumeric(list, key) {
     const nums = list
       .map((r) => Number(r[key]))
@@ -212,6 +230,9 @@
       return;
     }
 
+    if (state.index < 0) state.index = 0;
+    if (state.index >= list.length) state.index = list.length - 1;
+
     const r = list[state.index];
     const tier = npsTier(r.nps);
     const clave = val(r.clave);
@@ -243,13 +264,15 @@
       state.stickToLatest = false;
       if (state.index > 0) {
         state.index -= 1;
+        // index 0 = más reciente
+        state.stickToLatest = state.index === 0;
         renderDetail();
       }
     });
     document.getElementById("btnNext")?.addEventListener("click", () => {
-      state.stickToLatest = state.index + 1 >= list.length - 1;
       if (state.index < list.length - 1) {
         state.index += 1;
+        state.stickToLatest = false;
         renderDetail();
       }
     });
@@ -274,22 +297,24 @@
       const data = await res.json();
       const list = Array.isArray(data.responses) ? data.responses : [];
       const grew = list.length > state.lastCount;
-      const prevId = state.responses[state.index]?.id;
+      const prev = state.responses[state.index];
 
       state.responses = list;
       if (!list.length) {
         state.index = 0;
-      } else if (state.stickToLatest || grew) {
-        state.index = 0; // newest first
         state.stickToLatest = true;
+      } else if (state.stickToLatest) {
+        // Solo si estás en la más reciente, quédate en la más reciente.
+        state.index = 0;
       } else {
-        const idx = list.findIndex((r) => r.id === prevId);
-        state.index = idx >= 0 ? idx : 0;
+        // Si estás navegando (ej. respuesta 7), no te regresa al 1.
+        state.index = findResponseIndex(list, prev);
+        state.stickToLatest = state.index === 0;
       }
 
       const now = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
       liveStatus.textContent = `En vivo · ${list.length} respuesta${list.length === 1 ? "" : "s"} · ${now}`;
-      renderAll(grew && list.length > state.lastCount);
+      renderAll(grew && state.stickToLatest);
       state.lastCount = list.length;
     } catch (err) {
       liveStatus.textContent = "Sin conexión · reintentando…";
@@ -299,13 +324,13 @@
   document.addEventListener("keydown", (e) => {
     if (!state.responses.length) return;
     if (e.key === "ArrowLeft" && state.index > 0) {
-      state.stickToLatest = false;
       state.index -= 1;
+      state.stickToLatest = state.index === 0;
       renderDetail();
     }
     if (e.key === "ArrowRight" && state.index < state.responses.length - 1) {
       state.index += 1;
-      state.stickToLatest = state.index >= state.responses.length - 1;
+      state.stickToLatest = false;
       renderDetail();
     }
   });
