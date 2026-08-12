@@ -12,12 +12,13 @@ const dataFile = path.join(dataDir, "responses.json");
 const DEFAULT_SHEETS_URL =
   "https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpLUBM/gviz/tq?tqx=out:json&sheet=Form%20Responses%201";
 const SHEETS_LIVE_URL = String(process.env.SHEETS_LIVE_URL || DEFAULT_SHEETS_URL).trim();
-// Opcional: filtrar por fecha (ISO). Vacío = mostrar todas las respuestas útiles del Sheet.
-const RESPONSES_SINCE = String(process.env.RESPONSES_SINCE || "").trim();
-const RESPONSES_SINCE_MS = (() => {
-  if (!RESPONSES_SINCE) return 0;
-  const t = Date.parse(RESPONSES_SINCE);
-  return Number.isFinite(t) ? t : 0;
+
+// Punto de partida oficial: solo esta respuesta + las nuevas después del reinicio.
+const ANCHOR_CLAVE = String(process.env.ANCHOR_CLAVE || "23CL04682").trim();
+const RESET_AFTER = String(process.env.RESET_AFTER || "2026-08-12T17:31:00.000Z").trim();
+const RESET_AFTER_MS = (() => {
+  const t = Date.parse(RESET_AFTER);
+  return Number.isFinite(t) ? t : Date.now();
 })();
 
 const TEST_PAYLOAD_RE =
@@ -83,25 +84,34 @@ function fingerprint(r) {
   return [r.clave, r.nps, r.motivo, r.receivedAt || r.timestamp].join("|").toLowerCase();
 }
 
-function isAfterReset(r) {
-  if (!RESPONSES_SINCE_MS) return true;
+function isAnchorResponse(r) {
+  return String(r.clave || "").trim().toLowerCase() === ANCHOR_CLAVE.toLowerCase();
+}
+
+function shouldKeepResponse(r) {
+  if (isAnchorResponse(r)) return true;
   const t = Date.parse(r.receivedAt || r.timestamp || 0);
   if (!Number.isFinite(t)) return false;
-  return t >= RESPONSES_SINCE_MS;
+  // Solo respuestas nuevas después del reinicio (después de la ancla).
+  return t >= RESET_AFTER_MS;
 }
 
 function mergeResponses(localList, remoteList) {
   const map = new Map();
   [...remoteList, ...localList].forEach((item) => {
     const n = normalizeResponse(item);
-    if (!isAfterReset(n)) return;
+    if (!shouldKeepResponse(n)) return;
     const key = n.id.startsWith("sheet_") ? n.id : fingerprint(n);
     if (!map.has(key)) map.set(key, n);
   });
+  // Ancla primero; luego las nuevas en orden cronológico (después de ella).
   return Array.from(map.values()).sort((a, b) => {
+    const aAnchor = isAnchorResponse(a) ? 0 : 1;
+    const bAnchor = isAnchorResponse(b) ? 0 : 1;
+    if (aAnchor !== bAnchor) return aAnchor - bAnchor;
     const ta = new Date(a.receivedAt || a.timestamp || 0).getTime();
     const tb = new Date(b.receivedAt || b.timestamp || 0).getTime();
-    return tb - ta;
+    return ta - tb;
   });
 }
 
@@ -270,17 +280,17 @@ app.get("/api/responses", async (_req, res) => {
 app.post("/api/responses", async (req, res) => {
   try {
     const entry = normalizeResponse(req.body || {});
-    // Asegura que nuevas respuestas queden después del reinicio.
-    if (!isAfterReset(entry)) {
-      entry.receivedAt = new Date().toISOString();
-      entry.timestamp = entry.receivedAt;
-    }
+    // Nuevas respuestas siempre con timestamp actual (después del reinicio).
+    const now = new Date().toISOString();
+    entry.receivedAt = now;
+    entry.timestamp = now;
+
     const clave = String(entry.clave || "").trim().toLowerCase();
-    const list = readResponses().filter(isAfterReset);
+    const list = readResponses().filter(shouldKeepResponse);
     const remote = await fetchSheetsLive();
     const known = mergeResponses(list, remote);
 
-    // Una respuesta por clave YAAVSER (local + Sheets, solo desde el reinicio).
+    // Una respuesta por clave YAAVSER (local + Sheets, solo set visible).
     if (clave) {
       const exists = known.some((r) => String(r.clave || "").trim().toLowerCase() === clave);
       if (exists) {
@@ -303,7 +313,12 @@ app.post("/api/responses", async (req, res) => {
 app.delete("/api/responses", (_req, res) => {
   try {
     writeResponses([]);
-    res.json({ ok: true, cleared: true, since: RESPONSES_SINCE });
+    res.json({
+      ok: true,
+      cleared: true,
+      anchor: ANCHOR_CLAVE,
+      resetAfter: RESET_AFTER,
+    });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message || "No se pudo limpiar" });
   }
