@@ -12,14 +12,16 @@ const dataFile = path.join(dataDir, "responses.json");
 const DEFAULT_SHEETS_URL =
   "https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpLUBM/gviz/tq?tqx=out:json&sheet=Form%20Responses%201";
 const SHEETS_LIVE_URL = String(process.env.SHEETS_LIVE_URL || DEFAULT_SHEETS_URL).trim();
-// Reinicio: ignora respuestas de prueba anteriores a este momento.
-const RESPONSES_SINCE = String(
-  process.env.RESPONSES_SINCE || "2026-08-08T18:50:00.000Z"
-).trim();
+// Opcional: filtrar por fecha (ISO). Vacío = mostrar todas las respuestas útiles del Sheet.
+const RESPONSES_SINCE = String(process.env.RESPONSES_SINCE || "").trim();
 const RESPONSES_SINCE_MS = (() => {
+  if (!RESPONSES_SINCE) return 0;
   const t = Date.parse(RESPONSES_SINCE);
   return Number.isFinite(t) ? t : 0;
 })();
+
+const TEST_PAYLOAD_RE =
+  /LIVE_TEST|USUARIO_VE_TODO|VISIBLE_|HELLO_SHEETS|TEST_ROW|prueba completa visible|respuesta completa de/i;
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
@@ -160,12 +162,16 @@ function gvizDateToIso(value, formatted) {
     const m = value.match(/^Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?\)$/);
     if (m) {
       const y = Number(m[1]);
-      const mo = Number(m[2]);
+      const mo = Number(m[2]) + 1; // gviz month is 0-based
       const d = Number(m[3]);
       const h = Number(m[4] || 0);
       const mi = Number(m[5] || 0);
       const s = Number(m[6] || 0);
-      return new Date(y, mo, d, h, mi, s).toISOString();
+      const pad = (n) => String(n).padStart(2, "0");
+      // El Sheet guarda hora local MX (UTC-6).
+      const local = `${y}-${pad(mo)}-${pad(d)}T${pad(h)}:${pad(mi)}:${pad(s)}-06:00`;
+      const parsed = new Date(local);
+      if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
     }
   }
   if (formatted) {
@@ -177,9 +183,11 @@ function gvizDateToIso(value, formatted) {
 
 function isUsefulPayload(raw, parsed) {
   const text = String(raw || "");
-  if (/HELLO_SHEETS|TEST_ROW/i.test(text)) return false;
+  if (TEST_PAYLOAD_RE.test(text)) return false;
+  const clave = String(parsed.clave || "").trim();
+  if (/^(LIVE_TEST|USUARIO_VE_TODO|VISIBLE_)/i.test(clave)) return false;
   if (parsed.nps !== undefined && parsed.nps !== "" && parsed.nps !== null) return true;
-  if (parsed.clave) return true;
+  if (clave) return true;
   if (text.includes("Clave:") || text.charAt(0) === "{") return true;
   return false;
 }
