@@ -1,9 +1,22 @@
 (() => {
   const POLL_MS = 3000;
   const kpisEl = document.getElementById("kpis");
-  const detailEl = document.getElementById("detailCard");
-  const statsEl = document.getElementById("statsCard");
+  const cardsGrid = document.getElementById("cardsGrid");
+  const listCount = document.getElementById("listCount");
   const liveStatus = document.getElementById("liveStatus");
+  const detailDialog = document.getElementById("detailDialog");
+  const dialogKicker = document.getElementById("dialogKicker");
+  const dialogTitle = document.getElementById("dialogTitle");
+  const dialogWhen = document.getElementById("dialogWhen");
+  const dialogFields = document.getElementById("dialogFields");
+
+  const filterSearch = document.getElementById("filterSearch");
+  const filterSegment = document.getElementById("filterSegment");
+  const filterMesa = document.getElementById("filterMesa");
+  const filterFrom = document.getElementById("filterFrom");
+  const filterTo = document.getElementById("filterTo");
+  const btnClearFilters = document.getElementById("btnClearFilters");
+  const btnExportCsv = document.getElementById("btnExportCsv");
 
   const LABELS = [
     ["clave", "Clave YAAVSER"],
@@ -29,20 +42,10 @@
     ["mejoraGeneral", "Mejora general"],
   ];
 
-  const MESA_ASPECTS = [
-    ["mesa_soporte", "Soporte recibido"],
-    ["mesa_espera", "Tiempo de espera"],
-    ["mesa_resolucion", "Resolución de dudas"],
-    ["mesa_amabilidad", "Amabilidad y empatía"],
-    ["mesa_conocimiento", "Conocimiento del agente"],
-    ["mesa_trato", "Trato recibido"],
-  ];
-
   const state = {
     responses: [],
-    index: 0,
+    filtered: [],
     lastCount: 0,
-    stickToLatest: true,
   };
 
   function esc(s) {
@@ -61,10 +64,10 @@
 
   function npsTier(nps) {
     const n = Number(nps);
-    if (!Number.isFinite(n)) return { label: "Sin NPS", cls: "passive" };
-    if (n >= 9) return { label: "Promotor", cls: "promoter" };
-    if (n >= 7) return { label: "Pasivo", cls: "passive" };
-    return { label: "Detractor", cls: "detractor" };
+    if (!Number.isFinite(n)) return { label: "Sin NPS", cls: "passive", key: "passive" };
+    if (n >= 9) return { label: "Promotor", cls: "promoter", key: "promoter" };
+    if (n >= 7) return { label: "Pasivo", cls: "passive", key: "passive" };
+    return { label: "Detractor", cls: "detractor", key: "detractor" };
   }
 
   function when(iso) {
@@ -77,30 +80,22 @@
     }
   }
 
-  function fingerprint(r) {
-    return [r?.clave, r?.nps, r?.motivo, r?.receivedAt || r?.timestamp]
-      .map((x) => String(x ?? "").trim().toLowerCase())
-      .join("|");
-  }
-
-  function findResponseIndex(list, prev) {
-    if (!prev || !list.length) return 0;
-    if (prev.id) {
-      const byId = list.findIndex((r) => r.id === prev.id);
-      if (byId >= 0) return byId;
+  function shortDate(iso) {
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return "Sin fecha";
+      return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+    } catch (_) {
+      return "Sin fecha";
     }
-    const fp = fingerprint(prev);
-    const byFp = list.findIndex((r) => fingerprint(r) === fp);
-    if (byFp >= 0) return byFp;
-    return Math.min(state.index, list.length - 1);
   }
 
-  function avgNumeric(list, key) {
-    const nums = list
-      .map((r) => Number(r[key]))
-      .filter((n) => Number.isFinite(n) && n >= 1 && n <= 5);
-    if (!nums.length) return null;
-    return nums.reduce((a, b) => a + b, 0) / nums.length;
+  function isYes(v) {
+    return String(v || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .startsWith("s");
   }
 
   function computeStats(list) {
@@ -116,58 +111,36 @@
     });
     const totalScored = scores.length || 1;
     const npsScore = ((promoters - detractors) / totalScored) * 100;
-
-    const countYes = (key) => list.filter((r) => String(r[key] || "").toLowerCase().startsWith("s")).length;
-
-    const mesaAspects = MESA_ASPECTS.map(([key, label]) => ({
-      key,
-      label,
-      avg: avgNumeric(list, key),
-    }));
-
-    return {
-      total: list.length,
-      avg,
-      promoters,
-      passives,
-      detractors,
-      npsScore,
-      mesa: countYes("mesaUso"),
-      recarga: countYes("recargaUso"),
-      pop: countYes("popUso"),
-      mesaAspects,
-    };
+    const mesa = list.filter((r) => isYes(r.mesaUso)).length;
+    return { total: list.length, avg, promoters, passives, detractors, npsScore, mesa };
   }
 
-  function bar(label, count, total) {
-    const pct = total ? Math.round((count / total) * 100) : 0;
-    return `
-      <div class="bar-row">
-        <span>${esc(label)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-        <strong>${count}</strong>
-      </div>
-    `;
-  }
+  function applyFilters() {
+    const q = String(filterSearch.value || "")
+      .trim()
+      .toLowerCase();
+    const segment = filterSegment.value;
+    const mesa = filterMesa.value;
+    const from = filterFrom.value ? new Date(`${filterFrom.value}T00:00:00`) : null;
+    const to = filterTo.value ? new Date(`${filterTo.value}T23:59:59`) : null;
 
-  function scoreBar(label, avg) {
-    if (avg == null) {
-      return `
-        <div class="bar-row bar-row-score">
-          <span>${esc(label)}</span>
-          <div class="bar-track"><div class="bar-fill" style="width:0%"></div></div>
-          <strong class="muted-num">—</strong>
-        </div>
-      `;
-    }
-    const pct = Math.max(0, Math.min(100, Math.round((avg / 5) * 100)));
-    return `
-      <div class="bar-row bar-row-score">
-        <span>${esc(label)}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-        <strong>${avg.toFixed(1)}</strong>
-      </div>
-    `;
+    state.filtered = state.responses.filter((r) => {
+      const tier = npsTier(r.nps);
+      if (segment !== "all" && tier.key !== segment) return false;
+
+      if (mesa === "si" && !isYes(r.mesaUso)) return false;
+      if (mesa === "no" && isYes(r.mesaUso)) return false;
+
+      const ts = new Date(r.receivedAt || r.timestamp || 0);
+      if (from && (!Number.isNaN(from.getTime()) && (Number.isNaN(ts.getTime()) || ts < from))) return false;
+      if (to && (!Number.isNaN(to.getTime()) && (Number.isNaN(ts.getTime()) || ts > to))) return false;
+
+      if (!q) return true;
+      const hay = [r.clave, r.motivo, r.antiguedad, r.mejoraGeneral, r.nps]
+        .map((x) => String(x ?? "").toLowerCase())
+        .join(" ");
+      return hay.includes(q);
+    });
   }
 
   function renderKpis(stats) {
@@ -175,7 +148,7 @@
       <div class="kpi">
         <div class="kpi-label">Respuestas</div>
         <div class="kpi-value">${stats.total}</div>
-        <div class="kpi-sub">En tiempo real</div>
+        <div class="kpi-sub">Filtradas</div>
       </div>
       <div class="kpi">
         <div class="kpi-label">NPS promedio</div>
@@ -195,48 +168,13 @@
     `;
   }
 
-  function renderStats(stats) {
-    const t = stats.total || 1;
-    const mesaBars = (stats.mesaAspects || []).map((a) => scoreBar(a.label, a.avg)).join("");
-    statsEl.innerHTML = `
-      <h2>Resumen por pregunta</h2>
-      <div class="stat-block">
-        <h3>Segmento NPS</h3>
-        ${bar("Promotores", stats.promoters, t)}
-        ${bar("Pasivos", stats.passives, t)}
-        ${bar("Detractores", stats.detractors, t)}
-      </div>
-      <div class="stat-block">
-        <h3>Uso de servicios</h3>
-        ${bar("Mesa de Control", stats.mesa, t)}
-        ${bar("RecargaKlic", stats.recarga, t)}
-        ${bar("Material POP", stats.pop, t)}
-      </div>
-      <div class="stat-block">
-        <h3>Mesa de Control · promedio 1–5</h3>
-        ${mesaBars || `<p class="muted" style="margin:0;font-size:0.85rem">Sin calificaciones aún.</p>`}
-      </div>
-      <p class="muted" style="margin:0;font-size:0.85rem">Se actualiza solo cada pocos segundos.</p>
-    `;
-  }
-
-  function renderDetail() {
-    const list = state.responses;
-    if (!list.length) {
-      detailEl.innerHTML = `
-        <p class="muted"><strong>Aún no hay respuestas.</strong></p>
-        <p class="muted">En cuanto alguien complete el cuestionario, verás aquí cada respuesta una por una, en vivo.</p>
-      `;
-      return;
-    }
-
-    if (state.index < 0) state.index = 0;
-    if (state.index >= list.length) state.index = list.length - 1;
-
-    const r = list[state.index];
+  function openDetail(r) {
     const tier = npsTier(r.nps);
     const clave = val(r.clave);
-    const fields = LABELS.map(([key, label]) => {
+    dialogKicker.textContent = `NPS ${r.nps ?? "—"} · ${tier.label}`;
+    dialogTitle.textContent = clave.na ? "Sin clave" : clave.text;
+    dialogWhen.textContent = when(r.receivedAt || r.timestamp);
+    dialogFields.innerHTML = LABELS.map(([key, label]) => {
       const v = val(r[key]);
       return `
         <div class="field">
@@ -245,49 +183,98 @@
         </div>
       `;
     }).join("");
-
-    detailEl.innerHTML = `
-      <div class="detail-head">
-        <div class="counter">Respuesta ${state.index + 1} de ${list.length}</div>
-        <div class="badge ${tier.cls}">NPS ${esc(String(r.nps ?? "—"))} · ${tier.label}</div>
-      </div>
-      <h2 class="detail-title">${clave.na ? "Sin clave" : esc(clave.text)}</h2>
-      <p class="detail-when">${esc(when(r.receivedAt || r.timestamp))}</p>
-      <div class="fields">${fields}</div>
-      <div class="nav">
-        <button type="button" class="btn btn-ghost" id="btnPrev" ${state.index <= 0 ? "disabled" : ""}>← Anterior</button>
-        <button type="button" class="btn btn-primary" id="btnNext" ${state.index >= list.length - 1 ? "disabled" : ""}>Siguiente →</button>
-      </div>
-    `;
-
-    document.getElementById("btnPrev")?.addEventListener("click", () => {
-      state.stickToLatest = false;
-      if (state.index > 0) {
-        state.index -= 1;
-        // index 0 = más reciente
-        state.stickToLatest = state.index === 0;
-        renderDetail();
-      }
-    });
-    document.getElementById("btnNext")?.addEventListener("click", () => {
-      if (state.index < list.length - 1) {
-        state.index += 1;
-        state.stickToLatest = false;
-        renderDetail();
-      }
-    });
+    if (typeof detailDialog.showModal === "function") detailDialog.showModal();
   }
 
-  function renderAll(flash) {
-    const stats = computeStats(state.responses);
-    renderKpis(stats);
-    renderStats(stats);
-    renderDetail();
-    if (flash) {
-      detailEl.classList.remove("flash");
-      void detailEl.offsetWidth;
-      detailEl.classList.add("flash");
+  function downloadOneCsv(r) {
+    const headers = LABELS.map(([, label]) => label);
+    const row = LABELS.map(([key]) => csvEscape(String(r[key] ?? "")));
+    const csv = `${headers.join(",")}\n${row.join(",")}\n`;
+    triggerDownload(csv, `respuesta-${String(r.clave || r.id || "nps").replace(/\s+/g, "_")}.csv`);
+  }
+
+  function downloadAllCsv() {
+    const list = state.filtered;
+    if (!list.length) return;
+    const headers = ["Fecha", ...LABELS.map(([, label]) => label)];
+    const lines = list.map((r) => {
+      const cells = [csvEscape(when(r.receivedAt || r.timestamp)), ...LABELS.map(([key]) => csvEscape(String(r[key] ?? "")))];
+      return cells.join(",");
+    });
+    const csv = `${headers.join(",")}\n${lines.join("\n")}\n`;
+    triggerDownload(csv, `resultados-nps-yaavs.csv`);
+  }
+
+  function csvEscape(s) {
+    const t = String(s ?? "").replace(/"/g, '""');
+    return /[",\n]/.test(t) ? `"${t}"` : t;
+  }
+
+  function triggerDownload(text, filename) {
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderCards() {
+    const list = state.filtered;
+    listCount.textContent = String(list.length);
+
+    if (!list.length) {
+      cardsGrid.innerHTML = `
+        <div class="empty-state">
+          <strong>No hay respuestas con estos filtros.</strong><br />
+          Ajusta la búsqueda o espera a que lleguen nuevas respuestas.
+        </div>
+      `;
+      return;
     }
+
+    cardsGrid.innerHTML = list
+      .map((r, idx) => {
+        const tier = npsTier(r.nps);
+        const clave = val(r.clave);
+        const motivo = val(r.motivo);
+        const title = clave.na ? "Sin clave" : clave.text;
+        const motivoText = motivo.na ? "Sin motivo" : motivo.text;
+        const services = [
+          isYes(r.mesaUso) ? "Mesa" : null,
+          isYes(r.recargaUso) ? "RecargaKlic" : null,
+          isYes(r.popUso) ? "POP" : null,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        return `
+          <article class="response-card" data-idx="${idx}">
+            <div class="card-media" data-tier="${tier.cls}">
+              <span class="card-badge ${tier.cls}">${esc(tier.label)}</span>
+              <div class="card-nps">${esc(String(r.nps ?? "—"))}</div>
+            </div>
+            <div class="card-body">
+              <h3 class="card-title">${esc(title)}</h3>
+              <p class="card-meta">${esc(motivoText.slice(0, 90))}${motivoText.length > 90 ? "…" : ""}</p>
+              <p class="card-meta">${esc(services || "Sin servicios marcados")}</p>
+              <p class="card-date">${esc(shortDate(r.receivedAt || r.timestamp))}</p>
+              <div class="card-actions">
+                <button type="button" data-action="detail" data-idx="${idx}">Ver detalle</button>
+                <button type="button" data-action="csv" data-idx="${idx}">CSV</button>
+              </div>
+            </div>
+          </article>
+        `;
+      })
+      .join("");
+  }
+
+  function renderAll() {
+    applyFilters();
+    renderKpis(computeStats(state.filtered));
+    renderCards();
   }
 
   async function refresh() {
@@ -297,43 +284,48 @@
       const data = await res.json();
       const list = Array.isArray(data.responses) ? data.responses : [];
       const grew = list.length > state.lastCount;
-      const prev = state.responses[state.index];
-
       state.responses = list;
-      if (!list.length) {
-        state.index = 0;
-        state.stickToLatest = true;
-      } else if (state.stickToLatest) {
-        // Solo si estás en la más reciente, quédate en la más reciente.
-        state.index = 0;
-      } else {
-        // Si estás navegando (ej. respuesta 7), no te regresa al 1.
-        state.index = findResponseIndex(list, prev);
-        state.stickToLatest = state.index === 0;
-      }
-
-      const now = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-      liveStatus.textContent = `En vivo · ${list.length} respuesta${list.length === 1 ? "" : "s"} · ${now}`;
-      renderAll(grew && state.stickToLatest);
       state.lastCount = list.length;
-    } catch (err) {
+
+      const now = new Date().toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      liveStatus.textContent = `En vivo · ${list.length} respuesta${list.length === 1 ? "" : "s"}${
+        grew ? " · nueva" : ""
+      } · ${now}`;
+      renderAll();
+    } catch (_) {
       liveStatus.textContent = "Sin conexión · reintentando…";
     }
   }
 
-  document.addEventListener("keydown", (e) => {
-    if (!state.responses.length) return;
-    if (e.key === "ArrowLeft" && state.index > 0) {
-      state.index -= 1;
-      state.stickToLatest = state.index === 0;
-      renderDetail();
-    }
-    if (e.key === "ArrowRight" && state.index < state.responses.length - 1) {
-      state.index += 1;
-      state.stickToLatest = false;
-      renderDetail();
-    }
+  cardsGrid.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const idx = Number(btn.dataset.idx);
+    const r = state.filtered[idx];
+    if (!r) return;
+    if (btn.dataset.action === "detail") openDetail(r);
+    if (btn.dataset.action === "csv") downloadOneCsv(r);
   });
+
+  [filterSearch, filterSegment, filterMesa, filterFrom, filterTo].forEach((el) => {
+    el.addEventListener("input", renderAll);
+    el.addEventListener("change", renderAll);
+  });
+
+  btnClearFilters.addEventListener("click", () => {
+    filterSearch.value = "";
+    filterSegment.value = "all";
+    filterMesa.value = "all";
+    filterFrom.value = "";
+    filterTo.value = "";
+    renderAll();
+  });
+
+  btnExportCsv.addEventListener("click", downloadAllCsv);
 
   refresh();
   setInterval(refresh, POLL_MS);

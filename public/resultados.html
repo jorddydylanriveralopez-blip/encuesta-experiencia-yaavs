@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f2440" />
+    <meta name="theme-color" content="#eef4fa" />
     <title>Encuesta integral de experiencia YAAVS (NPS)</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./resultados.css" />
+    <link rel="stylesheet" href="./resultados.css?v=20260812cards" />
   </head>
   <body>
     <div class="atmosphere" aria-hidden="true">
@@ -31,21 +31,61 @@
           </p>
         </div>
       </div>
-      <a class="ghost-link" href="./">Cuestionario</a>
+      <div class="top-actions">
+        <button type="button" class="ghost-link" id="btnExportCsv">CSV</button>
+        <a class="ghost-link" href="./">Cuestionario</a>
+      </div>
     </header>
 
     <main class="layout">
       <section class="kpis" id="kpis"></section>
 
-      <section class="split">
-        <article class="card detail-card" id="detailCard">
-          <p class="muted">Cargando respuestas…</p>
-        </article>
-
-        <aside class="card stats-card" id="statsCard"></aside>
+      <section class="filters-bar" id="filtersBar">
+        <input
+          type="search"
+          id="filterSearch"
+          class="filter-input"
+          placeholder="Buscar clave, motivo o antigüedad…"
+          autocomplete="off"
+        />
+        <select id="filterSegment" class="filter-select" aria-label="Segmento NPS">
+          <option value="all">Todos los segmentos</option>
+          <option value="promoter">Promotores</option>
+          <option value="passive">Pasivos</option>
+          <option value="detractor">Detractores</option>
+        </select>
+        <select id="filterMesa" class="filter-select" aria-label="Mesa de Control">
+          <option value="all">Mesa: todas</option>
+          <option value="si">Usaron Mesa</option>
+          <option value="no">No usaron Mesa</option>
+        </select>
+        <input type="date" id="filterFrom" class="filter-date" aria-label="Desde" />
+        <input type="date" id="filterTo" class="filter-date" aria-label="Hasta" />
+        <button type="button" class="btn-clear" id="btnClearFilters">Limpiar</button>
       </section>
+
+      <section class="list-head">
+        <h2>Respuestas</h2>
+        <span class="list-count" id="listCount">0</span>
+      </section>
+
+      <section class="cards-grid" id="cardsGrid"></section>
     </main>
 
-    <script src="./resultados.js" defer></script>
+    <dialog class="detail-dialog" id="detailDialog">
+      <form method="dialog" class="detail-sheet">
+        <header class="detail-sheet-head">
+          <div>
+            <p class="detail-kicker" id="dialogKicker">Detalle</p>
+            <h2 id="dialogTitle">—</h2>
+            <p class="detail-when" id="dialogWhen"></p>
+          </div>
+          <button type="submit" class="btn-close" aria-label="Cerrar">×</button>
+        </header>
+        <div class="detail-fields" id="dialogFields"></div>
+      </form>
+    </dialog>
+
+    <script src="./resultados.js?v=20260812cards" defer></script>
   </body>
 </html>
