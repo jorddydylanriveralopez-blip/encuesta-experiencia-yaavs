@@ -46,7 +46,34 @@
     responses: [],
     filtered: [],
     lastCount: 0,
+    charts: {
+      dist: null,
+      segments: null,
+      trend: null,
+    },
   };
+
+  const avgFill = document.getElementById("avgFill");
+  const avgValue = document.getElementById("avgValue");
+  const avgHint = document.getElementById("avgHint");
+  const chartNpsDistEl = document.getElementById("chartNpsDist");
+  const chartSegmentsEl = document.getElementById("chartSegments");
+  const chartAvgTrendEl = document.getElementById("chartAvgTrend");
+
+  const chartColors = {
+    navy: "#0f2440",
+    cyan: "#2563b5",
+    good: "#0d8a5a",
+    warn: "#c47a00",
+    bad: "#c0392b",
+    muted: "#5a738c",
+  };
+
+  function npsBarColor(score) {
+    if (score >= 9) return chartColors.good;
+    if (score >= 7) return chartColors.warn;
+    return chartColors.bad;
+  }
 
   function esc(s) {
     return String(s ?? "")
@@ -112,7 +139,183 @@
     const totalScored = scores.length || 1;
     const npsScore = ((promoters - detractors) / totalScored) * 100;
     const mesa = list.filter((r) => isYes(r.mesaUso)).length;
-    return { total: list.length, avg, promoters, passives, detractors, npsScore, mesa };
+
+    const dist = Array.from({ length: 11 }, () => 0);
+    scores.forEach((n) => {
+      const i = Math.max(0, Math.min(10, Math.round(n)));
+      dist[i] += 1;
+    });
+
+    // Promedio acumulado en orden cronológico (cómo se va “llenando”).
+    const chronological = [...list]
+      .map((r) => ({
+        nps: Number(r.nps),
+        t: new Date(r.receivedAt || r.timestamp || 0).getTime(),
+      }))
+      .filter((x) => Number.isFinite(x.nps))
+      .sort((a, b) => a.t - b.t);
+    const trendLabels = [];
+    const trendValues = [];
+    let running = 0;
+    chronological.forEach((item, idx) => {
+      running += item.nps;
+      trendLabels.push(String(idx + 1));
+      trendValues.push(Number((running / (idx + 1)).toFixed(2)));
+    });
+
+    return {
+      total: list.length,
+      avg,
+      promoters,
+      passives,
+      detractors,
+      npsScore,
+      mesa,
+      dist,
+      scoresCount: scores.length,
+      trendLabels,
+      trendValues,
+    };
+  }
+
+  function ensureCharts() {
+    if (typeof Chart === "undefined") return false;
+    if (!state.charts.dist && chartNpsDistEl) {
+      state.charts.dist = new Chart(chartNpsDistEl, {
+        type: "bar",
+        data: {
+          labels: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"],
+          datasets: [
+            {
+              label: "Respuestas",
+              data: Array(11).fill(0),
+              backgroundColor: Array.from({ length: 11 }, (_, i) => npsBarColor(i)),
+              borderRadius: 8,
+              borderSkipped: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 450 },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.parsed.y} respuesta${ctx.parsed.y === 1 ? "" : "s"}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { display: false },
+              ticks: { color: chartColors.muted, font: { weight: "600" } },
+            },
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, color: chartColors.muted, precision: 0 },
+              grid: { color: "rgba(15,36,64,0.08)" },
+            },
+          },
+        },
+      });
+    }
+
+    if (!state.charts.segments && chartSegmentsEl) {
+      state.charts.segments = new Chart(chartSegmentsEl, {
+        type: "doughnut",
+        data: {
+          labels: ["Promotores", "Pasivos", "Detractores"],
+          datasets: [
+            {
+              data: [0, 0, 0],
+              backgroundColor: [chartColors.good, chartColors.warn, chartColors.bad],
+              borderWidth: 0,
+              hoverOffset: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { boxWidth: 12, font: { weight: "600" }, color: chartColors.navy },
+            },
+          },
+        },
+      });
+    }
+
+    if (!state.charts.trend && chartAvgTrendEl) {
+      state.charts.trend = new Chart(chartAvgTrendEl, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: "Promedio acumulado",
+              data: [],
+              borderColor: chartColors.cyan,
+              backgroundColor: "rgba(37, 99, 181, 0.16)",
+              fill: true,
+              tension: 0.35,
+              pointRadius: 3,
+              pointBackgroundColor: chartColors.navy,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: {
+              title: { display: true, text: "Respuesta #", color: chartColors.muted },
+              grid: { display: false },
+              ticks: { color: chartColors.muted },
+            },
+            y: {
+              min: 0,
+              max: 10,
+              ticks: { stepSize: 2, color: chartColors.muted },
+              grid: { color: "rgba(15,36,64,0.08)" },
+            },
+          },
+        },
+      });
+    }
+    return true;
+  }
+
+  function renderCharts(stats) {
+    if (!ensureCharts()) return;
+
+    const pct = stats.avg == null ? 0 : Math.max(0, Math.min(100, (stats.avg / 10) * 100));
+    if (avgFill) avgFill.style.width = `${pct}%`;
+    if (avgValue) avgValue.textContent = stats.avg == null ? "—" : stats.avg.toFixed(1);
+    if (avgHint) {
+      avgHint.textContent = stats.scoresCount
+        ? `Con ${stats.scoresCount} calificación${stats.scoresCount === 1 ? "" : "es"}`
+        : "Sin datos aún";
+    }
+
+    if (state.charts.dist) {
+      state.charts.dist.data.datasets[0].data = stats.dist;
+      state.charts.dist.update();
+    }
+    if (state.charts.segments) {
+      state.charts.segments.data.datasets[0].data = [stats.promoters, stats.passives, stats.detractors];
+      state.charts.segments.update();
+    }
+    if (state.charts.trend) {
+      state.charts.trend.data.labels = stats.trendLabels;
+      state.charts.trend.data.datasets[0].data = stats.trendValues;
+      state.charts.trend.update();
+    }
   }
 
   function applyFilters() {
@@ -273,7 +476,9 @@
 
   function renderAll() {
     applyFilters();
-    renderKpis(computeStats(state.filtered));
+    const stats = computeStats(state.filtered);
+    renderKpis(stats);
+    renderCharts(stats);
     renderCards();
   }
 
