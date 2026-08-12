@@ -381,6 +381,52 @@ body {
   background: #c0392b;
 }
 
+.avg-pie-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.css-pie {
+  width: 168px;
+  height: 168px;
+  border-radius: 50%;
+  background: rgba(15, 36, 64, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(15, 36, 64, 0.06);
+}
+
+.css-pie[hidden],
+.css-pie-legend[hidden] {
+  display: none !important;
+}
+
+.css-pie-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  width: 100%;
+  max-width: 260px;
+}
+
+.css-pie-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.css-pie-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: 0 0 auto;
+}
+
 .chart-canvas-wrap {
   position: relative;
   width: 100%;
@@ -388,6 +434,13 @@ body {
 
 .chart-canvas-wrap-sm {
   min-height: 120px;
+}
+
+.chart-canvas-wrap-pie {
+  width: 100%;
+  max-width: 280px;
+  min-height: 220px;
+  margin: 0 auto;
 }
 
 .chart-canvas-wrap-donut {

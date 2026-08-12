@@ -49,18 +49,20 @@
     charts: {
       dist: null,
       segments: null,
-      trend: null,
+      avgPie: null,
     },
   };
 
   const avgFill = document.getElementById("avgFill");
   const avgValue = document.getElementById("avgValue");
   const avgHint = document.getElementById("avgHint");
+  const cssAvgPie = document.getElementById("cssAvgPie");
+  const cssAvgPieLegend = document.getElementById("cssAvgPieLegend");
   const cssDistBars = document.getElementById("cssDistBars");
   const cssSegments = document.getElementById("cssSegments");
   const chartNpsDistEl = document.getElementById("chartNpsDist");
   const chartSegmentsEl = document.getElementById("chartSegments");
-  const chartAvgTrendEl = document.getElementById("chartAvgTrend");
+  const chartAvgPieEl = document.getElementById("chartAvgPie");
 
   const chartColors = {
     navy: "#0f2440",
@@ -252,48 +254,88 @@
       });
     }
 
-    if (!state.charts.trend && chartAvgTrendEl) {
-      state.charts.trend = new Chart(chartAvgTrendEl, {
-        type: "line",
+    if (!state.charts.avgPie && chartAvgPieEl) {
+      state.charts.avgPie = new Chart(chartAvgPieEl, {
+        type: "pie",
         data: {
-          labels: [],
+          labels: ["Promotores", "Pasivos", "Detractores"],
           datasets: [
             {
-              label: "Promedio acumulado",
-              data: [],
-              borderColor: chartColors.cyan,
-              backgroundColor: "rgba(37, 99, 181, 0.16)",
-              fill: true,
-              tension: 0.35,
-              pointRadius: 3,
-              pointBackgroundColor: chartColors.navy,
+              data: [0, 0, 0],
+              backgroundColor: [chartColors.good, chartColors.warn, chartColors.bad],
+              borderWidth: 2,
+              borderColor: "#ffffff",
+              hoverOffset: 6,
             },
           ],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: {
-              title: { display: true, text: "Respuesta #", color: chartColors.muted },
-              grid: { display: false },
-              ticks: { color: chartColors.muted },
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { boxWidth: 12, font: { weight: "600" }, color: chartColors.navy },
             },
-            y: {
-              min: 0,
-              max: 10,
-              ticks: { stepSize: 2, color: chartColors.muted },
-              grid: { color: "rgba(15,36,64,0.08)" },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
+                  const value = ctx.parsed || 0;
+                  const pct = Math.round((value / total) * 100);
+                  return ` ${value} · ${pct}%`;
+                },
+              },
             },
           },
         },
       });
+      if (cssAvgPie) cssAvgPie.hidden = true;
+      if (cssAvgPieLegend) cssAvgPieLegend.hidden = true;
     }
     return true;
   }
 
+  function renderAvgPieCss(stats) {
+    const parts = [
+      { label: "Promotores", value: stats.promoters, color: chartColors.good },
+      { label: "Pasivos", value: stats.passives, color: chartColors.warn },
+      { label: "Detractores", value: stats.detractors, color: chartColors.bad },
+    ];
+    const total = parts.reduce((sum, p) => sum + p.value, 0);
+
+    if (cssAvgPie) {
+      if (!total) {
+        cssAvgPie.style.background = "rgba(15, 36, 64, 0.08)";
+      } else {
+        let start = 0;
+        const stops = parts
+          .filter((p) => p.value > 0)
+          .map((p) => {
+            const deg = (p.value / total) * 360;
+            const from = start;
+            const to = start + deg;
+            start = to;
+            return `${p.color} ${from}deg ${to}deg`;
+          });
+        cssAvgPie.style.background = `conic-gradient(${stops.join(", ")})`;
+      }
+    }
+
+    if (cssAvgPieLegend) {
+      const denom = Math.max(1, total);
+      cssAvgPieLegend.innerHTML = parts
+        .map((p) => {
+          const pct = total ? Math.round((p.value / denom) * 100) : 0;
+          return `<li><span class="css-pie-swatch" style="background:${p.color}"></span>${p.label} · ${p.value} (${pct}%)</li>`;
+        })
+        .join("");
+    }
+  }
+
   function renderCssCharts(stats) {
+    renderAvgPieCss(stats);
+
     if (cssDistBars) {
       const max = Math.max(1, ...stats.dist);
       cssDistBars.innerHTML = stats.dist
@@ -349,10 +391,9 @@
       state.charts.segments.data.datasets[0].data = [stats.promoters, stats.passives, stats.detractors];
       state.charts.segments.update();
     }
-    if (state.charts.trend) {
-      state.charts.trend.data.labels = stats.trendLabels;
-      state.charts.trend.data.datasets[0].data = stats.trendValues;
-      state.charts.trend.update();
+    if (state.charts.avgPie) {
+      state.charts.avgPie.data.datasets[0].data = [stats.promoters, stats.passives, stats.detractors];
+      state.charts.avgPie.update();
     }
   }
 
