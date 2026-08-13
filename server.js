@@ -336,6 +336,7 @@ app.delete("/api/responses", (_req, res) => {
 });
 
 app.get("/resultados", (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.sendFile(path.join(publicDir, "resultados.html"));
 });
 
@@ -343,9 +344,19 @@ app.get("/panel", (_req, res) => {
   res.redirect(302, "/resultados");
 });
 
-app.use(express.static(publicDir, { extensions: ["html"] }));
+app.use(
+  express.static(publicDir, {
+    extensions: ["html"],
+    setHeaders(res, filePath) {
+      if (/\.(?:js|css|html)$/i.test(filePath)) {
+        res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      }
+    },
+  })
+);
 
 app.get("/", (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
@@ -353,6 +364,7 @@ app.use((req, res) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ ok: false, error: "No encontrado" });
   }
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate");
   res.sendFile(path.join(publicDir, "index.html"));
 });
 
