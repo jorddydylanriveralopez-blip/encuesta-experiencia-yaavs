@@ -56,6 +56,8 @@ function doPost(e) {
       data.mesaMejoras || "",
       data.recargaMetodo || "",
       data.recargaUso || "",
+      data.recargaExp || "",
+      data.recargaMejora || "",
       data.popUso || "",
       data.popSat || "",
       data.popMejora || "",
@@ -109,6 +111,8 @@ function getOrCreateSheet_(name) {
       "Mesa mejoras",
       "Método recarga",
       "RecargaKlic uso",
+      "RecargaKlic exp",
+      "RecargaKlic mejora",
       "POP uso",
       "POP satisfacción",
       "POP mejora",
@@ -119,7 +123,7 @@ function getOrCreateSheet_(name) {
       "Mejora general",
     ]);
     sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, 24).setFontWeight("bold");
+    sheet.getRange(1, 1, 1, 26).setFontWeight("bold");
   }
   return sheet;
 }

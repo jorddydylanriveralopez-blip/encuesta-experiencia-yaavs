@@ -32,7 +32,7 @@
     ["mesa_conocimiento", "Conocimiento del agente"],
     ["mesa_trato", "Trato recibido"],
     ["mesaMejoras", "Mejoras Mesa de Control"],
-    ["recargaMetodo", "Método de recarga"],
+    ["recargaMetodo", "Medio de activación de chips"],
     ["recargaUso", "¿Usó RecargaKlic?"],
     ["recargaExp", "Experiencia RecargaKlic"],
     ["recargaMejora", "Mejora RecargaKlic"],
@@ -40,7 +40,7 @@
     ["popSat", "Satisfacción POP"],
     ["popMejora", "Mejora POP"],
     ["productosYaavs", "Productos YAAVS"],
-    ["distribuidores", "Distribuidores de chips"],
+    ["distribuidores", "Otro distribuidor de chips"],
     ["competencia", "Qué ofrece la competencia"],
     ["rentabilidad", "Ganancias"],
     ["antiguedad", "Antigüedad"],
@@ -73,7 +73,12 @@
   const chartAvgPieEl = document.getElementById("chartAvgPie");
   const chartMetodoPieEl = document.getElementById("chartMetodoPie");
 
-  const RECARGA_METODO_LABELS = ["Recarga Klic", "Bot de WhatsApp", "Web", "Mesa de Control"];
+  const RECARGA_METODO_LABELS = [
+    "App de RecargaKlic",
+    "Bot de WhatsApp (Alphabot)",
+    "RecargaKlic Web",
+    "Mesa de control",
+  ];
   const RECARGA_METODO_COLORS = ["#2563b5", "#0d8a5a", "#c47a00", "#6b4f9a"];
 
   const chartColors = {
@@ -181,8 +186,13 @@
 
     const metodoCounts = RECARGA_METODO_LABELS.map(() => 0);
     list.forEach((r) => {
-      const m = String(r.recargaMetodo || "").trim();
-      const idx = RECARGA_METODO_LABELS.findIndex((label) => label.toLowerCase() === m.toLowerCase());
+      const raw = String(r.recargaMetodo || "").trim().toLowerCase();
+      if (!raw) return;
+      let idx = -1;
+      if (raw.includes("whatsapp") || raw.includes("alphabot")) idx = 1;
+      else if (raw.includes("web")) idx = 2;
+      else if (raw.includes("mesa")) idx = 3;
+      else if (raw.includes("recarga") || raw.includes("klic")) idx = 0;
       if (idx >= 0) metodoCounts[idx] += 1;
     });
 
@@ -599,9 +609,14 @@
       .map((r, idx) => {
         const tier = npsTier(r.nps);
         const clave = val(r.clave);
+        const productos = val(r.productosYaavs);
         const motivo = val(r.motivo);
         const title = clave.na ? "Sin clave" : clave.text;
-        const motivoText = motivo.na ? "Sin motivo" : motivo.text;
+        const subtitle = !productos.na
+          ? productos.text
+          : !motivo.na
+            ? motivo.text
+            : "Sin detalle";
         const services = [
           isYes(r.mesaUso) ? "Mesa" : null,
           r.recargaMetodo ? String(r.recargaMetodo) : isYes(r.recargaUso) ? "RecargaKlic" : null,
@@ -618,7 +633,7 @@
             </div>
             <div class="card-body">
               <h3 class="card-title">${esc(title)}</h3>
-              <p class="card-meta">${esc(motivoText.slice(0, 90))}${motivoText.length > 90 ? "…" : ""}</p>
+              <p class="card-meta">${esc(subtitle.slice(0, 90))}${subtitle.length > 90 ? "…" : ""}</p>
               <p class="card-meta">${esc(services || "Sin servicios marcados")}</p>
               <p class="card-date">${esc(shortDate(r.receivedAt || r.timestamp))}</p>
               <div class="card-actions">

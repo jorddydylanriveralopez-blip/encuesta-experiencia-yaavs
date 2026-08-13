@@ -32,35 +32,39 @@
     "Cantidad de materiales",
     "Tiempo de entrega",
     "Utilidad para promocionar mi negocio",
+    "Instalación o rotulación",
+    "Otro",
+  ];
+
+  const RECARGA_MEJORAS = [
+    "Facilidad de uso",
+    "Rapidez de la aplicación",
+    "Disponibilidad y estabilidad",
+    "Claridad de la información",
+    "Proceso para realizar recargas",
     "Otro",
   ];
 
   const RECARGA_METODOS = [
-    "Recarga Klic",
-    "Bot de WhatsApp",
-    "Web",
-    "Mesa de Control",
+    "App de RecargaKlic",
+    "Bot de WhatsApp (Alphabot)",
+    "RecargaKlic Web",
+    "Mesa de control",
   ];
 
   const VISITA_EJECUTIVO = [
-    "Cada semana",
-    "Cada 15 días",
+    "Dos o más veces por semana",
+    "Una vez por semana",
+    "Una vez cada 15 días",
     "Una vez al mes",
-    "Cada 2 o 3 meses",
-    "Casi nunca o nunca",
-  ];
-
-  const DISTRIBUIDORES = [
-    "Ninguno (solo YAAVS)",
-    "1",
-    "2",
-    "3 o más",
+    "Con menor frecuencia",
+    "No he recibido visitas de mi ejecutivo",
   ];
 
   const PRODUCTOS_YAAVS = [
-    "Venta de chips multimarca",
+    "Chips multimarca",
     "Portabilidades",
-    "ESIM",
+    "eSIM",
     "Liberaciones",
     "Internet inalámbrico",
     "Tiempo aire",
@@ -86,9 +90,9 @@
   const SCALE_GANANCIAS = [
     { value: 1, label: "Muy bajas" },
     { value: 2, label: "Bajas" },
-    { value: 3, label: "Regulares" },
+    { value: 3, label: "Aceptables" },
     { value: 4, label: "Buenas" },
-    { value: 5, label: "Muy buenas" },
+    { value: 5, label: "Excelentes" },
   ];
 
   const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
@@ -148,27 +152,34 @@
     return next;
   }
 
-  function resetAnswers() {
-    Object.assign(state.answers, {
+  function blankAnswers() {
+    return {
       clave: "",
       nps: null,
       motivo: "",
-      ejecutivo: null,
+      productosYaavs: [],
       visitaEjecutivo: null,
+      ejecutivo: null,
       mesaUso: null,
       mesaMatrix: {},
       mesaMejoras: [],
       recargaMetodo: null,
+      recargaUso: null,
+      recargaExp: null,
+      recargaMejora: null,
       popUso: null,
       popSat: null,
       popMejora: null,
-      productosYaavs: [],
-      distribuidores: null,
-      competencia: "",
       rentabilidad: null,
+      distribuidores: "",
+      competencia: "",
       mejoraGeneral: "",
       website: "",
-    });
+    };
+  }
+
+  function resetAnswers() {
+    Object.assign(state.answers, blankAnswers());
     state._lastError = null;
     state.submitting = false;
   }
@@ -182,36 +193,16 @@
   const state = {
     stepId: window.__YAAVS_NPS_LOCKED__ || hasReachedLimit() ? "already" : "welcome",
     submitting: false,
-    answers: {
-      clave: "",
-      nps: null,
-      motivo: "",
-      ejecutivo: null,
-      visitaEjecutivo: null,
-      mesaUso: null,
-      mesaMatrix: {},
-      mesaMejoras: [],
-      recargaMetodo: null,
-      popUso: null,
-      popSat: null,
-      popMejora: null,
-      productosYaavs: [],
-      distribuidores: null,
-      competencia: "",
-      rentabilidad: null,
-      mejoraGeneral: "",
-      website: "",
-    },
+    answers: blankAnswers(),
   };
 
-  function motivoPrompt(nps) {
-    if (nps <= 6) {
-      return "¿Cuál es la principal razón de tu calificación y qué tendría que mejorar YAAVS?";
-    }
-    if (nps <= 8) {
-      return "¿Qué tendría que mejorar YAAVS para obtener una calificación de 9 o 10?";
-    }
-    return "¿Qué es lo que más valoras de trabajar con YAAVS?";
+  function hasOtherDistribuidor() {
+    const v = String(state.answers.distribuidores || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    return v.length > 0 && v !== "ninguno";
   }
 
   function mesaNeedsImprove() {
@@ -227,9 +218,9 @@
       { id: "welcome", kind: "welcome" },
       { id: "clave", kind: "clave", section: "Identificación" },
       { id: "nps", kind: "nps", section: "Recomendación y experiencia" },
-      { id: "motivo", kind: "motivo", section: "Recomendación y experiencia" },
-      { id: "ejecutivo", kind: "scale", section: "Ejecutivo comercial" },
+      { id: "productosYaavs", kind: "productos", section: "Productos" },
       { id: "visitaEjecutivo", kind: "choice", section: "Ejecutivo comercial" },
+      { id: "ejecutivo", kind: "scale", section: "Ejecutivo comercial" },
       { id: "mesaUso", kind: "yesno", section: "Mesa de Control" },
     ];
 
@@ -241,9 +232,17 @@
     }
 
     steps.push(
-      { id: "recargaMetodo", kind: "choice", section: "Recargas" },
-      { id: "popUso", kind: "yesno", section: "Material POP" }
+      { id: "recargaMetodo", kind: "choice", section: "RecargaKlic" },
+      { id: "recargaUso", kind: "yesno", section: "RecargaKlic" }
     );
+    if (a.recargaUso === "Sí") {
+      steps.push({ id: "recargaExp", kind: "scale", section: "RecargaKlic" });
+      if (typeof a.recargaExp === "number" && a.recargaExp <= 3) {
+        steps.push({ id: "recargaMejora", kind: "choice", section: "RecargaKlic" });
+      }
+    }
+
+    steps.push({ id: "popUso", kind: "yesno", section: "Material POP" });
     if (a.popUso === "Sí") {
       steps.push({ id: "popSat", kind: "scale", section: "Material POP" });
       if (typeof a.popSat === "number" && a.popSat <= 3) {
@@ -252,10 +251,13 @@
     }
 
     steps.push(
-      { id: "productosYaavs", kind: "productos", section: "Productos" },
-      { id: "distribuidores", kind: "choice", section: "Competencia" },
-      { id: "competencia", kind: "competencia", section: "Competencia" },
-      { id: "rentabilidad", kind: "scale", section: "Ganancias" },
+      { id: "rentabilidad", kind: "scale", section: "Ganancias y fidelización" },
+      { id: "distribuidores", kind: "distribuidores", section: "Ganancias y fidelización" }
+    );
+    if (hasOtherDistribuidor()) {
+      steps.push({ id: "competencia", kind: "competencia", section: "Ganancias y fidelización" });
+    }
+    steps.push(
       { id: "mejoraGeneral", kind: "long", section: "Cierre" },
       { id: "done", kind: "done" }
     );
@@ -307,8 +309,10 @@
         return a.clave.trim().length >= 3;
       case "nps":
         return typeof a.nps === "number";
-      case "motivo":
-        return a.motivo.trim().length > 0 && a.motivo.length <= 500;
+      case "productosYaavs":
+        return a.productosYaavs.length >= 1;
+      case "visitaEjecutivo":
+        return !!a.visitaEjecutivo;
       case "ejecutivo":
         return typeof a.ejecutivo === "number";
       case "mesaUso":
@@ -317,26 +321,28 @@
         return MATRIX_ROWS.every((r) => typeof a.mesaMatrix[r.key] === "number");
       case "mesaMejoras":
         return a.mesaMejoras.length >= 1 && a.mesaMejoras.length <= 2;
-      case "visitaEjecutivo":
-        return !!a.visitaEjecutivo;
       case "recargaMetodo":
         return !!a.recargaMetodo;
+      case "recargaUso":
+        return a.recargaUso === "Sí" || a.recargaUso === "No";
+      case "recargaExp":
+        return typeof a.recargaExp === "number";
+      case "recargaMejora":
+        return !!a.recargaMejora;
       case "popUso":
         return a.popUso === "Sí" || a.popUso === "No";
       case "popSat":
         return typeof a.popSat === "number";
       case "popMejora":
         return !!a.popMejora;
-      case "productosYaavs":
-        return a.productosYaavs.length >= 1;
-      case "distribuidores":
-        return !!a.distribuidores;
-      case "competencia":
-        return a.competencia.trim().length > 0 && a.competencia.length <= 500;
       case "rentabilidad":
         return typeof a.rentabilidad === "number";
+      case "distribuidores":
+        return a.distribuidores.trim().length > 0 && a.distribuidores.length <= 150;
+      case "competencia":
+        return a.competencia.trim().length > 0 && a.competencia.length <= 500;
       case "mejoraGeneral":
-        return a.mejoraGeneral.trim().length > 0 && a.mejoraGeneral.length <= 700;
+        return a.mejoraGeneral.length <= 700;
       default:
         return true;
     }
@@ -396,11 +402,12 @@
     return el(`
       <section class="card welcome step">
         <div class="kicker"><span class="kicker-dot"></span> Encuesta de experiencia</div>
-        <h1>YAAVS quiere seguir ayudándote a crecer</h1>
+        <h1>En YAAVS queremos seguir ayudándote a hacer crecer tu negocio</h1>
         <p class="lead">
-          Responder toma menos de 3 minutos. Tu opinión nos permite mejorar la atención,
-          las herramientas y los beneficios que te ofrecemos.
+          Responder esta encuesta te tomará menos de 3 minutos. Tu opinión nos permitirá mejorar
+          la atención, nuestras herramientas y los beneficios que te ofrecemos.
         </p>
+        <p class="lead" style="margin-top:0.55rem">Responde únicamente con base en tu experiencia reciente.</p>
         <div class="meta-pills">
           <span class="pill">≈ 3 minutos</span>
           <span class="pill">Respuestas confidenciales</span>
@@ -449,8 +456,8 @@
     const root = el(`
       <section class="card step">
         <span class="section-tag">Sección 1 · Recomendación</span>
-        <h2 class="question-title">¿Qué tan probable es que recomiendes YAAVS a otro negocio como el tuyo?</h2>
-        <p class="question-help">Escala de 0 a 10, según tu experiencia reciente.</p>
+        <h2 class="question-title">En una escala de 0 a 10, ¿qué tan probable es que recomiendes YAAVS a otro negocio como el tuyo?</h2>
+        <p class="question-help">0 — Nada probable · 10 — Totalmente probable</p>
         <div class="nps-grid">${buttons}</div>
         <div class="nps-labels"><span>0 — Nada probable</span><span>10 — Totalmente probable</span></div>
         ${actionsHtml()}
@@ -465,31 +472,6 @@
         refreshNext(root);
       });
     });
-    return root;
-  }
-
-  function renderMotivo() {
-    const nps = state.answers.nps ?? 0;
-    const root = el(`
-      <section class="card step">
-        <span class="section-tag">Sección 1 · Motivo</span>
-        <h2 class="question-title">${escapeHtml(motivoPrompt(nps))}</h2>
-        <p class="question-help">Máximo 500 caracteres.</p>
-        <textarea class="field" id="motivo" maxlength="500" placeholder="Cuéntanos con tus palabras…">${escapeHtml(
-          state.answers.motivo
-        )}</textarea>
-        <div class="char-count"><span id="motivoCount">${state.answers.motivo.length}</span>/500</div>
-        ${actionsHtml()}
-      </section>
-    `);
-    const ta = root.querySelector("#motivo");
-    const count = root.querySelector("#motivoCount");
-    ta.addEventListener("input", () => {
-      state.answers.motivo = ta.value;
-      count.textContent = String(ta.value.length);
-      refreshNext(root);
-    });
-    setTimeout(() => ta.focus(), 50);
     return root;
   }
 
@@ -576,7 +558,7 @@
     const root = el(`
       <section class="card step">
         <span class="section-tag">Sección 3 · Mesa de Control</span>
-        <h2 class="question-title">Pensando en tu atención más reciente, ¿cómo calificarías estos aspectos?</h2>
+        <h2 class="question-title">Pensando en tu atención más reciente, ¿cómo calificarías los siguientes aspectos de nuestra Mesa de Control?</h2>
         <p class="question-help">1 — Pésimo · 5 — Excelente</p>
         <div class="matrix">${rows}</div>
         <div class="matrix-legend">
@@ -679,9 +661,9 @@
 
     const root = el(`
       <section class="card step">
-        <span class="section-tag">Sección · Productos YAAVS</span>
-        <h2 class="question-title">¿Qué productos de YAAVS comercializas?</h2>
-        <p class="question-help">Puedes seleccionar todas las que apliquen.</p>
+        <span class="section-tag">Sección 1 · Productos y servicios</span>
+        <h2 class="question-title">¿Qué productos y servicios comercializas de YAAVS actualmente?</h2>
+        <p class="question-help">Selecciona todos los productos y servicios que comercializas actualmente.</p>
         <div class="choices">${options}</div>
         ${actionsHtml()}
       </section>
@@ -705,12 +687,36 @@
     return root;
   }
 
+  function renderDistribuidores() {
+    const root = el(`
+      <section class="card step">
+        <span class="section-tag">Sección 6 · Ganancias y fidelización</span>
+        <h2 class="question-title">Aparte de YAAVS, ¿con qué otro distribuidor de chips trabajas actualmente?</h2>
+        <p class="question-help">Escribe el nombre del distribuidor. Si no trabajas con otro, escribe “Ninguno”.</p>
+        <input class="field" id="distribuidores" type="text" autocomplete="off" maxlength="150"
+          placeholder="Ej. Nombre del distribuidor o Ninguno" value="${escapeAttr(state.answers.distribuidores)}" />
+        <div class="char-count"><span id="distCount">${state.answers.distribuidores.length}</span>/150</div>
+        ${actionsHtml()}
+      </section>
+    `);
+    const input = root.querySelector("#distribuidores");
+    const count = root.querySelector("#distCount");
+    input.addEventListener("input", () => {
+      state.answers.distribuidores = input.value;
+      count.textContent = String(input.value.length);
+      if (!hasOtherDistribuidor()) state.answers.competencia = "";
+      refreshNext(root);
+    });
+    setTimeout(() => input.focus(), 50);
+    return root;
+  }
+
   function renderCompetencia() {
     const root = el(`
       <section class="card step">
-        <span class="section-tag">Sección · Competencia</span>
-        <h2 class="question-title">¿Qué ofrece la competencia que nosotros no?</h2>
-        <p class="question-help">Obligatoria · máximo 500 caracteres.</p>
+        <span class="section-tag">Sección 6 · Ganancias y fidelización</span>
+        <h2 class="question-title">¿Qué consideras que ofrece la competencia que YAAVS no?</h2>
+        <p class="question-help">Menciona productos, servicios, beneficios, promociones o condiciones comerciales. Máximo 500 caracteres.</p>
         <textarea class="field" id="competencia" maxlength="500" placeholder="Cuéntanos qué ves en otros distribuidores…">${escapeHtml(
           state.answers.competencia
         )}</textarea>
@@ -732,9 +738,9 @@
   function renderLong() {
     const root = el(`
       <section class="card step">
-        <span class="section-tag">Sección · Cierre</span>
+        <span class="section-tag">Sección 6 · Cierre</span>
         <h2 class="question-title">En general, ¿qué podríamos mejorar en YAAVS para ayudarte a hacer crecer tu negocio?</h2>
-        <p class="question-help">Obligatoria · máximo 700 caracteres.</p>
+        <p class="question-help">Opcional · máximo 700 caracteres.</p>
         <textarea class="field" id="mejora" maxlength="700" placeholder="Ideas, fricciones o lo que te gustaría ver…">${escapeHtml(
           state.answers.mejoraGeneral
         )}</textarea>
@@ -808,16 +814,18 @@
   function buildPayload() {
     const a = state.answers;
     const mesaSi = a.mesaUso === "Sí";
+    const recargaSi = a.recargaUso === "Sí";
     const popSi = a.popUso === "Sí";
-    const usaRecargaKlic = a.recargaMetodo === "Recarga Klic";
+    const otherDist = hasOtherDistribuidor();
 
     return {
       timestamp: new Date().toISOString(),
       clave: a.clave.trim(),
       nps: a.nps,
-      motivo: a.motivo.trim(),
-      ejecutivo: a.ejecutivo,
+      motivo: "",
+      productosYaavs: a.productosYaavs.join(" | "),
       visitaEjecutivo: a.visitaEjecutivo,
+      ejecutivo: a.ejecutivo,
       mesaUso: a.mesaUso,
       mesa_soporte: mesaSi ? a.mesaMatrix.soporte : "No aplica",
       mesa_espera: mesaSi ? a.mesaMatrix.espera : "No aplica",
@@ -827,17 +835,15 @@
       mesa_trato: mesaSi ? a.mesaMatrix.trato : "No aplica",
       mesaMejoras: mesaSi ? a.mesaMejoras.join(" | ") || "No aplica" : "No aplica",
       recargaMetodo: a.recargaMetodo,
-      // Compatibilidad con respuestas / panel anteriores
-      recargaUso: usaRecargaKlic ? "Sí" : "No",
-      recargaExp: "No aplica",
-      recargaMejora: "No aplica",
+      recargaUso: a.recargaUso,
+      recargaExp: recargaSi ? a.recargaExp ?? "No aplica" : "No aplica",
+      recargaMejora: recargaSi ? a.recargaMejora ?? "No aplica" : "No aplica",
       popUso: a.popUso,
       popSat: popSi ? a.popSat ?? "No aplica" : "No aplica",
       popMejora: popSi ? a.popMejora ?? "No aplica" : "No aplica",
-      productosYaavs: a.productosYaavs.join(" | "),
-      distribuidores: a.distribuidores,
-      competencia: a.competencia.trim(),
       rentabilidad: a.rentabilidad,
+      distribuidores: a.distribuidores.trim(),
+      competencia: otherDist ? a.competencia.trim() : "No aplica",
       antiguedad: "No aplica",
       mejoraGeneral: a.mejoraGeneral.trim(),
       website: a.website,
@@ -849,9 +855,9 @@
     return [
       `Clave: ${visibleValue(payload.clave)}`,
       `NPS: ${visibleValue(payload.nps)}`,
-      `Motivo: ${visibleValue(payload.motivo)}`,
-      `Ejecutivo: ${visibleValue(payload.ejecutivo)}`,
+      `Productos YAAVS: ${visibleValue(payload.productosYaavs)}`,
       `Visita ejecutivo: ${visibleValue(payload.visitaEjecutivo)}`,
+      `Ejecutivo: ${visibleValue(payload.ejecutivo)}`,
       `Mesa uso: ${visibleValue(payload.mesaUso)}`,
       `Mesa soporte: ${visibleValue(payload.mesa_soporte)}`,
       `Mesa espera: ${visibleValue(payload.mesa_espera)}`,
@@ -862,14 +868,15 @@
       `Mesa mejoras: ${visibleValue(payload.mesaMejoras)}`,
       `Método recarga: ${visibleValue(payload.recargaMetodo)}`,
       `RecargaKlic uso: ${visibleValue(payload.recargaUso)}`,
+      `RecargaKlic exp: ${visibleValue(payload.recargaExp)}`,
+      `RecargaKlic mejora: ${visibleValue(payload.recargaMejora)}`,
       `POP uso: ${visibleValue(payload.popUso)}`,
       `POP sat: ${visibleValue(payload.popSat)}`,
       `POP mejora: ${visibleValue(payload.popMejora)}`,
-      `Productos YAAVS: ${visibleValue(payload.productosYaavs)}`,
-      `Distribuidores: ${visibleValue(payload.distribuidores)}`,
-      `Competencia: ${visibleValue(payload.competencia)}`,
       `Ganancias: ${visibleValue(payload.rentabilidad)}`,
       `Rentabilidad: ${visibleValue(payload.rentabilidad)}`,
+      `Distribuidores: ${visibleValue(payload.distribuidores)}`,
+      `Competencia: ${visibleValue(payload.competencia)}`,
       `Mejora general: ${visibleValue(payload.mejoraGeneral)}`,
       `JSON: ${JSON.stringify(payload)}`,
     ].join("\n");
@@ -983,8 +990,16 @@
       case "nps":
         node = renderNps();
         break;
-      case "motivo":
-        node = renderMotivo();
+      case "productosYaavs":
+        node = renderProductChecks();
+        break;
+      case "visitaEjecutivo":
+        node = renderChoice({
+          section: "Sección 2 · Ejecutivo comercial",
+          title: "¿Con qué frecuencia te visita tu ejecutivo de ventas?",
+          key: "visitaEjecutivo",
+          options: VISITA_EJECUTIVO,
+        });
         break;
       case "ejecutivo":
         node = renderScale({
@@ -992,14 +1007,6 @@
           title: "¿Cómo calificarías la atención que recibes de tu ejecutivo comercial?",
           key: "ejecutivo",
           options: SCALE_5,
-        });
-        break;
-      case "visitaEjecutivo":
-        node = renderChoice({
-          section: "Sección 2 · Ejecutivo comercial",
-          title: "¿Con qué frecuencia te visita tu ejecutivo comercial?",
-          key: "visitaEjecutivo",
-          options: VISITA_EJECUTIVO,
         });
         break;
       case "mesaUso":
@@ -1017,24 +1024,48 @@
         break;
       case "recargaMetodo":
         node = renderChoice({
-          section: "Sección 4 · Recargas",
-          title: "¿Qué método usas para recargar tus chips?",
-          help: "Elige el que usas con más frecuencia.",
+          section: "Sección 4 · App RecargaKlic",
+          title: "¿Cuál es el medio por el cual activas tus CHIPS?",
+          help: "Selecciona el medio que utilizas principalmente para activar tus chips.",
           key: "recargaMetodo",
           options: RECARGA_METODOS,
+        });
+        break;
+      case "recargaUso":
+        node = renderYesNo({
+          section: "Sección 4 · App RecargaKlic",
+          title: "En los últimos 6 meses, ¿has utilizado la app RecargaKlic?",
+          key: "recargaUso",
+        });
+        break;
+      case "recargaExp":
+        node = renderScale({
+          section: "Sección 4 · App RecargaKlic",
+          title: "¿Cómo calificarías tu experiencia general con la app RecargaKlic?",
+          key: "recargaExp",
+          options: SCALE_5,
+        });
+        break;
+      case "recargaMejora":
+        node = renderChoice({
+          section: "Sección 4 · App RecargaKlic",
+          title: "¿Qué aspecto de RecargaKlic deberíamos mejorar principalmente?",
+          key: "recargaMejora",
+          options: RECARGA_MEJORAS,
         });
         break;
       case "popUso":
         node = renderYesNo({
           section: "Sección 5 · Material POP",
-          title: "En los últimos 6 meses, ¿has recibido material POP YAAVS para tu negocio?",
+          title:
+            "En los últimos 6 meses, ¿has recibido material POP, promocionales o rotulación YAAVS para tu negocio?",
           key: "popUso",
         });
         break;
       case "popSat":
         node = renderScale({
           section: "Sección 5 · Material POP",
-          title: "¿Qué tan satisfecho estás con el material POP de tu negocio?",
+          title: "¿Qué tan satisfecho estás con el material POP que se ha colocado en tu negocio?",
           key: "popSat",
           options: SCALE_SAT,
         });
@@ -1042,32 +1073,24 @@
       case "popMejora":
         node = renderChoice({
           section: "Sección 5 · Material POP",
-          title: "¿Qué aspecto del material POP deberíamos mejorar principalmente?",
+          title: "¿Qué aspecto deberíamos mejorar principalmente?",
           key: "popMejora",
           options: POP_MEJORAS,
         });
         break;
-      case "productosYaavs":
-        node = renderProductChecks();
-        break;
-      case "distribuidores":
-        node = renderChoice({
-          section: "Sección · Competencia",
-          title: "Aparte de YAAVS, ¿con cuántos distribuidores de chips trabajas?",
-          key: "distribuidores",
-          options: DISTRIBUIDORES,
-        });
-        break;
-      case "competencia":
-        node = renderCompetencia();
-        break;
       case "rentabilidad":
         node = renderScale({
-          section: "Sección · Ganancias",
-          title: "¿Cómo consideras las ganancias que obtienes al trabajar con YAAVS?",
+          section: "Sección 6 · Ganancias y fidelización",
+          title: "En general, ¿cómo calificas las ganancias que obtienes al trabajar con YAAVS?",
           key: "rentabilidad",
           options: SCALE_GANANCIAS,
         });
+        break;
+      case "distribuidores":
+        node = renderDistribuidores();
+        break;
+      case "competencia":
+        node = renderCompetencia();
         break;
       case "mejoraGeneral":
         node = renderLong();
