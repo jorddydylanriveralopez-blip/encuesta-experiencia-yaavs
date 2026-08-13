@@ -66,9 +66,9 @@
     "Portabilidades",
     "eSIM",
     "Liberaciones",
-    "Internet inalámbrico",
+    "Internet inalámbrico (MIFI Bait)",
     "Tiempo aire",
-    "Planes de renta",
+    "Planes de renta BAIT POSPAGO",
   ];
 
   const SCALE_5 = [
