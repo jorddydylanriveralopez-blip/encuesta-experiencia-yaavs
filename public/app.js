@@ -26,31 +26,45 @@
     "Calidad general del servicio",
   ];
 
-  const RECARGA_MEJORAS = [
-    "Facilidad de uso",
-    "Rapidez de la aplicación",
-    "Disponibilidad y estabilidad",
-    "Claridad de la información",
-    "Proceso para realizar recargas",
-    "Otro",
-  ];
-
   const POP_MEJORAS = [
     "Calidad y durabilidad",
     "Diseño y contenido",
     "Cantidad de materiales",
     "Tiempo de entrega",
     "Utilidad para promocionar mi negocio",
-    "Instalación o rotulación",
     "Otro",
   ];
 
-  const ANTIGUEDAD = [
-    "Menos de 3 meses",
-    "De 3 a 6 meses",
-    "De 7 a 12 meses",
-    "Más de 1 y hasta 2 años",
-    "Más de 2 años",
+  const RECARGA_METODOS = [
+    "Recarga Klic",
+    "Bot de WhatsApp",
+    "Web",
+    "Mesa de Control",
+  ];
+
+  const VISITA_EJECUTIVO = [
+    "Cada semana",
+    "Cada 15 días",
+    "Una vez al mes",
+    "Cada 2 o 3 meses",
+    "Casi nunca o nunca",
+  ];
+
+  const DISTRIBUIDORES = [
+    "Ninguno (solo YAAVS)",
+    "1",
+    "2",
+    "3 o más",
+  ];
+
+  const PRODUCTOS_YAAVS = [
+    "Venta de chips multimarca",
+    "Portabilidades",
+    "ESIM",
+    "Liberaciones",
+    "Internet inalámbrico",
+    "Tiempo aire",
+    "Planes de renta",
   ];
 
   const SCALE_5 = [
@@ -69,12 +83,12 @@
     { value: 5, label: "Muy satisfecho" },
   ];
 
-  const SCALE_RENT = [
-    { value: 1, label: "Nada rentable" },
-    { value: 2, label: "Poco rentable" },
-    { value: 3, label: "Moderadamente rentable" },
-    { value: 4, label: "Rentable" },
-    { value: 5, label: "Muy rentable" },
+  const SCALE_GANANCIAS = [
+    { value: 1, label: "Muy bajas" },
+    { value: 2, label: "Bajas" },
+    { value: 3, label: "Regulares" },
+    { value: 4, label: "Buenas" },
+    { value: 5, label: "Muy buenas" },
   ];
 
   const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
@@ -140,17 +154,18 @@
       nps: null,
       motivo: "",
       ejecutivo: null,
+      visitaEjecutivo: null,
       mesaUso: null,
       mesaMatrix: {},
       mesaMejoras: [],
-      recargaUso: null,
-      recargaExp: null,
-      recargaMejora: null,
+      recargaMetodo: null,
       popUso: null,
       popSat: null,
       popMejora: null,
+      productosYaavs: [],
+      distribuidores: null,
+      competencia: "",
       rentabilidad: null,
-      antiguedad: null,
       mejoraGeneral: "",
       website: "",
     });
@@ -172,17 +187,18 @@
       nps: null,
       motivo: "",
       ejecutivo: null,
+      visitaEjecutivo: null,
       mesaUso: null,
       mesaMatrix: {},
       mesaMejoras: [],
-      recargaUso: null,
-      recargaExp: null,
-      recargaMejora: null,
+      recargaMetodo: null,
       popUso: null,
       popSat: null,
       popMejora: null,
+      productosYaavs: [],
+      distribuidores: null,
+      competencia: "",
       rentabilidad: null,
-      antiguedad: null,
       mejoraGeneral: "",
       website: "",
     },
@@ -213,6 +229,7 @@
       { id: "nps", kind: "nps", section: "Recomendación y experiencia" },
       { id: "motivo", kind: "motivo", section: "Recomendación y experiencia" },
       { id: "ejecutivo", kind: "scale", section: "Ejecutivo comercial" },
+      { id: "visitaEjecutivo", kind: "choice", section: "Ejecutivo comercial" },
       { id: "mesaUso", kind: "yesno", section: "Mesa de Control" },
     ];
 
@@ -223,15 +240,10 @@
       }
     }
 
-    steps.push({ id: "recargaUso", kind: "yesno", section: "App RecargaKlic" });
-    if (a.recargaUso === "Sí") {
-      steps.push({ id: "recargaExp", kind: "scale", section: "App RecargaKlic" });
-      if (typeof a.recargaExp === "number" && a.recargaExp <= 3) {
-        steps.push({ id: "recargaMejora", kind: "choice", section: "App RecargaKlic" });
-      }
-    }
-
-    steps.push({ id: "popUso", kind: "yesno", section: "Material POP" });
+    steps.push(
+      { id: "recargaMetodo", kind: "choice", section: "Recargas" },
+      { id: "popUso", kind: "yesno", section: "Material POP" }
+    );
     if (a.popUso === "Sí") {
       steps.push({ id: "popSat", kind: "scale", section: "Material POP" });
       if (typeof a.popSat === "number" && a.popSat <= 3) {
@@ -240,9 +252,11 @@
     }
 
     steps.push(
-      { id: "rentabilidad", kind: "scale", section: "Rentabilidad y fidelización" },
-      { id: "antiguedad", kind: "choice", section: "Rentabilidad y fidelización" },
-      { id: "mejoraGeneral", kind: "long", section: "Rentabilidad y fidelización" },
+      { id: "productosYaavs", kind: "productos", section: "Productos" },
+      { id: "distribuidores", kind: "choice", section: "Competencia" },
+      { id: "competencia", kind: "competencia", section: "Competencia" },
+      { id: "rentabilidad", kind: "scale", section: "Ganancias" },
+      { id: "mejoraGeneral", kind: "long", section: "Cierre" },
       { id: "done", kind: "done" }
     );
 
@@ -303,22 +317,24 @@
         return MATRIX_ROWS.every((r) => typeof a.mesaMatrix[r.key] === "number");
       case "mesaMejoras":
         return a.mesaMejoras.length >= 1 && a.mesaMejoras.length <= 2;
-      case "recargaUso":
-        return a.recargaUso === "Sí" || a.recargaUso === "No";
-      case "recargaExp":
-        return typeof a.recargaExp === "number";
-      case "recargaMejora":
-        return !!a.recargaMejora;
+      case "visitaEjecutivo":
+        return !!a.visitaEjecutivo;
+      case "recargaMetodo":
+        return !!a.recargaMetodo;
       case "popUso":
         return a.popUso === "Sí" || a.popUso === "No";
       case "popSat":
         return typeof a.popSat === "number";
       case "popMejora":
         return !!a.popMejora;
+      case "productosYaavs":
+        return a.productosYaavs.length >= 1;
+      case "distribuidores":
+        return !!a.distribuidores;
+      case "competencia":
+        return a.competencia.trim().length > 0 && a.competencia.length <= 500;
       case "rentabilidad":
         return typeof a.rentabilidad === "number";
-      case "antiguedad":
-        return !!a.antiguedad;
       case "mejoraGeneral":
         return a.mejoraGeneral.trim().length > 0 && a.mejoraGeneral.length <= 700;
       default:
@@ -653,10 +669,70 @@
     return root;
   }
 
+  function renderProductChecks() {
+    const options = PRODUCTOS_YAAVS.map((o) => {
+      const selected = state.answers.productosYaavs.includes(o) ? "is-selected" : "";
+      return `<button type="button" class="check ${selected}" data-val="${escapeAttr(o)}">
+        <span class="mark"></span><span>${escapeHtml(o)}</span>
+      </button>`;
+    }).join("");
+
+    const root = el(`
+      <section class="card step">
+        <span class="section-tag">Sección · Productos YAAVS</span>
+        <h2 class="question-title">¿Qué productos de YAAVS comercializas?</h2>
+        <p class="question-help">Puedes seleccionar todas las que apliquen.</p>
+        <div class="choices">${options}</div>
+        ${actionsHtml()}
+      </section>
+    `);
+
+    root.querySelectorAll("[data-val]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.val;
+        const list = state.answers.productosYaavs;
+        const i = list.indexOf(val);
+        if (i >= 0) {
+          list.splice(i, 1);
+          btn.classList.remove("is-selected");
+        } else {
+          list.push(val);
+          btn.classList.add("is-selected");
+        }
+        refreshNext(root);
+      });
+    });
+    return root;
+  }
+
+  function renderCompetencia() {
+    const root = el(`
+      <section class="card step">
+        <span class="section-tag">Sección · Competencia</span>
+        <h2 class="question-title">¿Qué ofrece la competencia que nosotros no?</h2>
+        <p class="question-help">Obligatoria · máximo 500 caracteres.</p>
+        <textarea class="field" id="competencia" maxlength="500" placeholder="Cuéntanos qué ves en otros distribuidores…">${escapeHtml(
+          state.answers.competencia
+        )}</textarea>
+        <div class="char-count"><span id="competenciaCount">${state.answers.competencia.length}</span>/500</div>
+        ${actionsHtml()}
+      </section>
+    `);
+    const ta = root.querySelector("#competencia");
+    const count = root.querySelector("#competenciaCount");
+    ta.addEventListener("input", () => {
+      state.answers.competencia = ta.value;
+      count.textContent = String(ta.value.length);
+      refreshNext(root);
+    });
+    setTimeout(() => ta.focus(), 50);
+    return root;
+  }
+
   function renderLong() {
     const root = el(`
       <section class="card step">
-        <span class="section-tag">Sección 6 · Cierre</span>
+        <span class="section-tag">Sección · Cierre</span>
         <h2 class="question-title">En general, ¿qué podríamos mejorar en YAAVS para ayudarte a hacer crecer tu negocio?</h2>
         <p class="question-help">Obligatoria · máximo 700 caracteres.</p>
         <textarea class="field" id="mejora" maxlength="700" placeholder="Ideas, fricciones o lo que te gustaría ver…">${escapeHtml(
@@ -732,8 +808,8 @@
   function buildPayload() {
     const a = state.answers;
     const mesaSi = a.mesaUso === "Sí";
-    const recargaSi = a.recargaUso === "Sí";
     const popSi = a.popUso === "Sí";
+    const usaRecargaKlic = a.recargaMetodo === "Recarga Klic";
 
     return {
       timestamp: new Date().toISOString(),
@@ -741,6 +817,7 @@
       nps: a.nps,
       motivo: a.motivo.trim(),
       ejecutivo: a.ejecutivo,
+      visitaEjecutivo: a.visitaEjecutivo,
       mesaUso: a.mesaUso,
       mesa_soporte: mesaSi ? a.mesaMatrix.soporte : "No aplica",
       mesa_espera: mesaSi ? a.mesaMatrix.espera : "No aplica",
@@ -749,14 +826,19 @@
       mesa_conocimiento: mesaSi ? a.mesaMatrix.conocimiento : "No aplica",
       mesa_trato: mesaSi ? a.mesaMatrix.trato : "No aplica",
       mesaMejoras: mesaSi ? a.mesaMejoras.join(" | ") || "No aplica" : "No aplica",
-      recargaUso: a.recargaUso,
-      recargaExp: recargaSi ? a.recargaExp ?? "No aplica" : "No aplica",
-      recargaMejora: recargaSi ? a.recargaMejora ?? "No aplica" : "No aplica",
+      recargaMetodo: a.recargaMetodo,
+      // Compatibilidad con respuestas / panel anteriores
+      recargaUso: usaRecargaKlic ? "Sí" : "No",
+      recargaExp: "No aplica",
+      recargaMejora: "No aplica",
       popUso: a.popUso,
       popSat: popSi ? a.popSat ?? "No aplica" : "No aplica",
       popMejora: popSi ? a.popMejora ?? "No aplica" : "No aplica",
+      productosYaavs: a.productosYaavs.join(" | "),
+      distribuidores: a.distribuidores,
+      competencia: a.competencia.trim(),
       rentabilidad: a.rentabilidad,
-      antiguedad: a.antiguedad,
+      antiguedad: "No aplica",
       mejoraGeneral: a.mejoraGeneral.trim(),
       website: a.website,
       sheetName: cfg.sheetName || "Respuestas NPS",
@@ -769,6 +851,7 @@
       `NPS: ${visibleValue(payload.nps)}`,
       `Motivo: ${visibleValue(payload.motivo)}`,
       `Ejecutivo: ${visibleValue(payload.ejecutivo)}`,
+      `Visita ejecutivo: ${visibleValue(payload.visitaEjecutivo)}`,
       `Mesa uso: ${visibleValue(payload.mesaUso)}`,
       `Mesa soporte: ${visibleValue(payload.mesa_soporte)}`,
       `Mesa espera: ${visibleValue(payload.mesa_espera)}`,
@@ -777,14 +860,16 @@
       `Mesa conocimiento: ${visibleValue(payload.mesa_conocimiento)}`,
       `Mesa trato: ${visibleValue(payload.mesa_trato)}`,
       `Mesa mejoras: ${visibleValue(payload.mesaMejoras)}`,
+      `Método recarga: ${visibleValue(payload.recargaMetodo)}`,
       `RecargaKlic uso: ${visibleValue(payload.recargaUso)}`,
-      `RecargaKlic exp: ${visibleValue(payload.recargaExp)}`,
-      `RecargaKlic mejora: ${visibleValue(payload.recargaMejora)}`,
       `POP uso: ${visibleValue(payload.popUso)}`,
       `POP sat: ${visibleValue(payload.popSat)}`,
       `POP mejora: ${visibleValue(payload.popMejora)}`,
+      `Productos YAAVS: ${visibleValue(payload.productosYaavs)}`,
+      `Distribuidores: ${visibleValue(payload.distribuidores)}`,
+      `Competencia: ${visibleValue(payload.competencia)}`,
+      `Ganancias: ${visibleValue(payload.rentabilidad)}`,
       `Rentabilidad: ${visibleValue(payload.rentabilidad)}`,
-      `Antigüedad: ${visibleValue(payload.antiguedad)}`,
       `Mejora general: ${visibleValue(payload.mejoraGeneral)}`,
       `JSON: ${JSON.stringify(payload)}`,
     ].join("\n");
@@ -909,6 +994,14 @@
           options: SCALE_5,
         });
         break;
+      case "visitaEjecutivo":
+        node = renderChoice({
+          section: "Sección 2 · Ejecutivo comercial",
+          title: "¿Con qué frecuencia te visita tu ejecutivo comercial?",
+          key: "visitaEjecutivo",
+          options: VISITA_EJECUTIVO,
+        });
+        break;
       case "mesaUso":
         node = renderYesNo({
           section: "Sección 3 · Mesa de Control",
@@ -922,42 +1015,26 @@
       case "mesaMejoras":
         node = renderChecks();
         break;
-      case "recargaUso":
-        node = renderYesNo({
-          section: "Sección 4 · RecargaKlic",
-          title: "En los últimos 6 meses, ¿has utilizado la app RecargaKlic?",
-          key: "recargaUso",
-        });
-        break;
-      case "recargaExp":
-        node = renderScale({
-          section: "Sección 4 · RecargaKlic",
-          title: "¿Cómo calificarías tu experiencia general con la app RecargaKlic?",
-          key: "recargaExp",
-          options: SCALE_5,
-        });
-        break;
-      case "recargaMejora":
+      case "recargaMetodo":
         node = renderChoice({
-          section: "Sección 4 · RecargaKlic",
-          title: "¿Qué aspecto de RecargaKlic deberíamos mejorar principalmente?",
-          key: "recargaMejora",
-          options: RECARGA_MEJORAS,
+          section: "Sección 4 · Recargas",
+          title: "¿Qué método usas para recargar tus chips?",
+          help: "Elige el que usas con más frecuencia.",
+          key: "recargaMetodo",
+          options: RECARGA_METODOS,
         });
         break;
       case "popUso":
         node = renderYesNo({
           section: "Sección 5 · Material POP",
-          title:
-            "En los últimos 6 meses, ¿has recibido material POP, promocionales o rotulación YAAVS para tu negocio?",
+          title: "En los últimos 6 meses, ¿has recibido material POP YAAVS para tu negocio?",
           key: "popUso",
         });
         break;
       case "popSat":
         node = renderScale({
           section: "Sección 5 · Material POP",
-          title:
-            "¿Qué tan satisfecho estás con el material POP, los promocionales y la rotulación YAAVS de tu negocio?",
+          title: "¿Qué tan satisfecho estás con el material POP de tu negocio?",
           key: "popSat",
           options: SCALE_SAT,
         });
@@ -965,25 +1042,31 @@
       case "popMejora":
         node = renderChoice({
           section: "Sección 5 · Material POP",
-          title: "¿Qué aspecto deberíamos mejorar principalmente?",
+          title: "¿Qué aspecto del material POP deberíamos mejorar principalmente?",
           key: "popMejora",
           options: POP_MEJORAS,
         });
         break;
-      case "rentabilidad":
-        node = renderScale({
-          section: "Sección 6 · Rentabilidad",
-          title: "¿Cómo consideras la rentabilidad que obtienes al trabajar con YAAVS?",
-          key: "rentabilidad",
-          options: SCALE_RENT,
+      case "productosYaavs":
+        node = renderProductChecks();
+        break;
+      case "distribuidores":
+        node = renderChoice({
+          section: "Sección · Competencia",
+          title: "Aparte de YAAVS, ¿con cuántos distribuidores de chips trabajas?",
+          key: "distribuidores",
+          options: DISTRIBUIDORES,
         });
         break;
-      case "antiguedad":
-        node = renderChoice({
-          section: "Sección 6 · Fidelización",
-          title: "¿Desde cuándo trabajas con YAAVS?",
-          key: "antiguedad",
-          options: ANTIGUEDAD,
+      case "competencia":
+        node = renderCompetencia();
+        break;
+      case "rentabilidad":
+        node = renderScale({
+          section: "Sección · Ganancias",
+          title: "¿Cómo consideras las ganancias que obtienes al trabajar con YAAVS?",
+          key: "rentabilidad",
+          options: SCALE_GANANCIAS,
         });
         break;
       case "mejoraGeneral":

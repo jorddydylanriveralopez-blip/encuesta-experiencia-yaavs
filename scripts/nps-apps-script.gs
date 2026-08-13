@@ -45,6 +45,7 @@ function doPost(e) {
       data.nps,
       data.motivo || "",
       data.ejecutivo,
+      data.visitaEjecutivo || "",
       data.mesaUso || "",
       data.mesa_soporte || "",
       data.mesa_espera || "",
@@ -53,14 +54,15 @@ function doPost(e) {
       data.mesa_conocimiento || "",
       data.mesa_trato || "",
       data.mesaMejoras || "",
+      data.recargaMetodo || "",
       data.recargaUso || "",
-      data.recargaExp || "",
-      data.recargaMejora || "",
       data.popUso || "",
       data.popSat || "",
       data.popMejora || "",
+      data.productosYaavs || "",
+      data.distribuidores || "",
+      data.competencia || "",
       data.rentabilidad,
-      data.antiguedad || "",
       data.mejoraGeneral || "",
     ]);
 
@@ -96,6 +98,7 @@ function getOrCreateSheet_(name) {
       "NPS",
       "Motivo",
       "Ejecutivo (1-5)",
+      "Visita ejecutivo",
       "Mesa uso",
       "Mesa: Soporte",
       "Mesa: Espera",
@@ -104,18 +107,19 @@ function getOrCreateSheet_(name) {
       "Mesa: Conocimiento",
       "Mesa: Trato",
       "Mesa mejoras",
+      "Método recarga",
       "RecargaKlic uso",
-      "RecargaKlic exp",
-      "RecargaKlic mejora",
       "POP uso",
       "POP satisfacción",
       "POP mejora",
-      "Rentabilidad",
-      "Antigüedad",
+      "Productos YAAVS",
+      "Distribuidores",
+      "Competencia",
+      "Ganancias",
       "Mejora general",
     ]);
     sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, 22).setFontWeight("bold");
+    sheet.getRange(1, 1, 1, 24).setFontWeight("bold");
   }
   return sheet;
 }

@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./resultados.css?v=20260812pie" />
+    <link rel="stylesheet" href="./resultados.css?v=20260813survey" />
   </head>
   <body>
     <div class="atmosphere" aria-hidden="true">
@@ -90,6 +90,20 @@
               <canvas id="chartSegments" height="180"></canvas>
             </div>
           </article>
+
+          <article class="chart-card">
+            <header class="chart-head">
+              <h3>Método de recarga</h3>
+              <p class="chart-sub">Cómo recargan sus chips</p>
+            </header>
+            <div class="avg-pie-wrap">
+              <div class="css-pie" id="cssMetodoPie" aria-hidden="true"></div>
+              <ul class="css-pie-legend" id="cssMetodoPieLegend"></ul>
+              <div class="chart-canvas-wrap chart-canvas-wrap-pie" data-chart-optional>
+                <canvas id="chartMetodoPie" height="200"></canvas>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
 
@@ -98,7 +112,7 @@
           type="search"
           id="filterSearch"
           class="filter-input"
-          placeholder="Buscar clave, motivo o antigüedad…"
+          placeholder="Buscar clave, motivo o producto…"
           autocomplete="off"
         />
         <select id="filterSegment" class="filter-select" aria-label="Segmento NPS">
@@ -140,6 +154,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="./resultados.js?v=20260812pie" defer></script>
+    <script src="./resultados.js?v=20260813survey" defer></script>
   </body>
 </html>

@@ -23,6 +23,7 @@
     ["nps", "NPS (0–10)"],
     ["motivo", "Motivo"],
     ["ejecutivo", "Calificación del ejecutivo"],
+    ["visitaEjecutivo", "Frecuencia de visita del ejecutivo"],
     ["mesaUso", "¿Usó Mesa de Control?"],
     ["mesa_soporte", "Soporte recibido"],
     ["mesa_espera", "Tiempo de espera"],
@@ -31,13 +32,17 @@
     ["mesa_conocimiento", "Conocimiento del agente"],
     ["mesa_trato", "Trato recibido"],
     ["mesaMejoras", "Mejoras Mesa de Control"],
+    ["recargaMetodo", "Método de recarga"],
     ["recargaUso", "¿Usó RecargaKlic?"],
     ["recargaExp", "Experiencia RecargaKlic"],
     ["recargaMejora", "Mejora RecargaKlic"],
     ["popUso", "¿Usó material POP?"],
     ["popSat", "Satisfacción POP"],
     ["popMejora", "Mejora POP"],
-    ["rentabilidad", "Rentabilidad"],
+    ["productosYaavs", "Productos YAAVS"],
+    ["distribuidores", "Distribuidores de chips"],
+    ["competencia", "Qué ofrece la competencia"],
+    ["rentabilidad", "Ganancias"],
     ["antiguedad", "Antigüedad"],
     ["mejoraGeneral", "Mejora general"],
   ];
@@ -50,6 +55,7 @@
       dist: null,
       segments: null,
       avgPie: null,
+      metodoPie: null,
     },
   };
 
@@ -58,11 +64,17 @@
   const avgHint = document.getElementById("avgHint");
   const cssAvgPie = document.getElementById("cssAvgPie");
   const cssAvgPieLegend = document.getElementById("cssAvgPieLegend");
+  const cssMetodoPie = document.getElementById("cssMetodoPie");
+  const cssMetodoPieLegend = document.getElementById("cssMetodoPieLegend");
   const cssDistBars = document.getElementById("cssDistBars");
   const cssSegments = document.getElementById("cssSegments");
   const chartNpsDistEl = document.getElementById("chartNpsDist");
   const chartSegmentsEl = document.getElementById("chartSegments");
   const chartAvgPieEl = document.getElementById("chartAvgPie");
+  const chartMetodoPieEl = document.getElementById("chartMetodoPie");
+
+  const RECARGA_METODO_LABELS = ["Recarga Klic", "Bot de WhatsApp", "Web", "Mesa de Control"];
+  const RECARGA_METODO_COLORS = ["#2563b5", "#0d8a5a", "#c47a00", "#6b4f9a"];
 
   const chartColors = {
     navy: "#0f2440",
@@ -167,6 +179,13 @@
       trendValues.push(Number((running / (idx + 1)).toFixed(2)));
     });
 
+    const metodoCounts = RECARGA_METODO_LABELS.map(() => 0);
+    list.forEach((r) => {
+      const m = String(r.recargaMetodo || "").trim();
+      const idx = RECARGA_METODO_LABELS.findIndex((label) => label.toLowerCase() === m.toLowerCase());
+      if (idx >= 0) metodoCounts[idx] += 1;
+    });
+
     return {
       total: list.length,
       avg,
@@ -179,6 +198,8 @@
       scoresCount: scores.length,
       trendLabels,
       trendValues,
+      metodoLabels: RECARGA_METODO_LABELS,
+      metodoCounts,
     };
   }
 
@@ -293,20 +314,54 @@
       if (cssAvgPie) cssAvgPie.hidden = true;
       if (cssAvgPieLegend) cssAvgPieLegend.hidden = true;
     }
+
+    if (!state.charts.metodoPie && chartMetodoPieEl) {
+      state.charts.metodoPie = new Chart(chartMetodoPieEl, {
+        type: "pie",
+        data: {
+          labels: RECARGA_METODO_LABELS,
+          datasets: [
+            {
+              data: RECARGA_METODO_LABELS.map(() => 0),
+              backgroundColor: RECARGA_METODO_COLORS,
+              borderWidth: 2,
+              borderColor: "#ffffff",
+              hoverOffset: 6,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: "bottom",
+              labels: { boxWidth: 12, font: { weight: "600" }, color: chartColors.navy },
+            },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
+                  const value = ctx.parsed || 0;
+                  const pct = Math.round((value / total) * 100);
+                  return ` ${value} · ${pct}%`;
+                },
+              },
+            },
+          },
+        },
+      });
+      if (cssMetodoPie) cssMetodoPie.hidden = true;
+      if (cssMetodoPieLegend) cssMetodoPieLegend.hidden = true;
+    }
     return true;
   }
 
-  function renderAvgPieCss(stats) {
-    const parts = [
-      { label: "Promotores", value: stats.promoters, color: chartColors.good },
-      { label: "Pasivos", value: stats.passives, color: chartColors.warn },
-      { label: "Detractores", value: stats.detractors, color: chartColors.bad },
-    ];
+  function paintCssPie(el, legendEl, parts) {
     const total = parts.reduce((sum, p) => sum + p.value, 0);
-
-    if (cssAvgPie) {
+    if (el) {
       if (!total) {
-        cssAvgPie.style.background = "rgba(15, 36, 64, 0.08)";
+        el.style.background = "rgba(15, 36, 64, 0.08)";
       } else {
         let start = 0;
         const stops = parts
@@ -318,13 +373,12 @@
             start = to;
             return `${p.color} ${from}deg ${to}deg`;
           });
-        cssAvgPie.style.background = `conic-gradient(${stops.join(", ")})`;
+        el.style.background = `conic-gradient(${stops.join(", ")})`;
       }
     }
-
-    if (cssAvgPieLegend) {
+    if (legendEl) {
       const denom = Math.max(1, total);
-      cssAvgPieLegend.innerHTML = parts
+      legendEl.innerHTML = parts
         .map((p) => {
           const pct = total ? Math.round((p.value / denom) * 100) : 0;
           return `<li><span class="css-pie-swatch" style="background:${p.color}"></span>${p.label} · ${p.value} (${pct}%)</li>`;
@@ -333,8 +387,29 @@
     }
   }
 
+  function renderAvgPieCss(stats) {
+    paintCssPie(cssAvgPie, cssAvgPieLegend, [
+      { label: "Promotores", value: stats.promoters, color: chartColors.good },
+      { label: "Pasivos", value: stats.passives, color: chartColors.warn },
+      { label: "Detractores", value: stats.detractors, color: chartColors.bad },
+    ]);
+  }
+
+  function renderMetodoPieCss(stats) {
+    paintCssPie(
+      cssMetodoPie,
+      cssMetodoPieLegend,
+      (stats.metodoLabels || []).map((label, i) => ({
+        label,
+        value: (stats.metodoCounts || [])[i] || 0,
+        color: RECARGA_METODO_COLORS[i],
+      }))
+    );
+  }
+
   function renderCssCharts(stats) {
     renderAvgPieCss(stats);
+    renderMetodoPieCss(stats);
 
     if (cssDistBars) {
       const max = Math.max(1, ...stats.dist);
@@ -395,6 +470,10 @@
       state.charts.avgPie.data.datasets[0].data = [stats.promoters, stats.passives, stats.detractors];
       state.charts.avgPie.update();
     }
+    if (state.charts.metodoPie) {
+      state.charts.metodoPie.data.datasets[0].data = stats.metodoCounts || [];
+      state.charts.metodoPie.update();
+    }
   }
 
   function applyFilters() {
@@ -418,7 +497,7 @@
       if (to && (!Number.isNaN(to.getTime()) && (Number.isNaN(ts.getTime()) || ts > to))) return false;
 
       if (!q) return true;
-      const hay = [r.clave, r.motivo, r.antiguedad, r.mejoraGeneral, r.nps]
+      const hay = [r.clave, r.motivo, r.productosYaavs, r.recargaMetodo, r.competencia, r.mejoraGeneral, r.nps]
         .map((x) => String(x ?? "").toLowerCase())
         .join(" ");
       return hay.includes(q);
@@ -525,7 +604,7 @@
         const motivoText = motivo.na ? "Sin motivo" : motivo.text;
         const services = [
           isYes(r.mesaUso) ? "Mesa" : null,
-          isYes(r.recargaUso) ? "RecargaKlic" : null,
+          r.recargaMetodo ? String(r.recargaMetodo) : isYes(r.recargaUso) ? "RecargaKlic" : null,
           isYes(r.popUso) ? "POP" : null,
         ]
           .filter(Boolean)

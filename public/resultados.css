@@ -224,7 +224,7 @@ body {
 
 .charts-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1.2fr 0.9fr;
+  grid-template-columns: 1.1fr 1.2fr 0.9fr 0.9fr;
   gap: 0.85rem;
 }
 
