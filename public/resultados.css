@@ -224,7 +224,7 @@ body {
 
 .charts-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1.2fr 0.9fr 0.9fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.85rem;
 }
 
@@ -388,6 +388,10 @@ body {
   margin-top: 0.25rem;
 }
 
+.avg-pie-wrap-metodo {
+  gap: 0.75rem;
+}
+
 .css-pie {
   width: 168px;
   height: 168px;
@@ -396,8 +400,7 @@ body {
   box-shadow: inset 0 0 0 1px rgba(15, 36, 64, 0.06);
 }
 
-.css-pie[hidden],
-.css-pie-legend[hidden] {
+.css-pie[hidden] {
   display: none !important;
 }
 
@@ -406,18 +409,35 @@ body {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.4rem;
   width: 100%;
-  max-width: 260px;
+  max-width: 320px;
 }
 
 .css-pie-legend li {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.82rem;
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: start;
+  gap: 0.5rem;
+  font-size: 0.8rem;
   font-weight: 650;
   color: var(--ink);
+  line-height: 1.25;
+}
+
+.css-pie-legend-metodo {
+  max-width: none;
+}
+
+.css-pie-legend-metodo li {
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.css-pie-legend .css-pie-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .css-pie-swatch {
@@ -425,6 +445,7 @@ body {
   height: 10px;
   border-radius: 3px;
   flex: 0 0 auto;
+  margin-top: 0.2rem;
 }
 
 .chart-canvas-wrap {
@@ -438,9 +459,14 @@ body {
 
 .chart-canvas-wrap-pie {
   width: 100%;
-  max-width: 280px;
-  min-height: 220px;
+  max-width: 220px;
+  min-height: 180px;
   margin: 0 auto;
+}
+
+.chart-canvas-wrap-metodo {
+  max-width: 180px;
+  min-height: 160px;
 }
 
 .chart-canvas-wrap-donut {
@@ -458,7 +484,7 @@ body {
   }
 
   .charts-grid .chart-card:first-child {
-    grid-column: 1 / -1;
+    grid-column: auto;
   }
 }
 

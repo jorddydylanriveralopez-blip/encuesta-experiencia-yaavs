@@ -79,6 +79,7 @@
     "RecargaKlic Web",
     "Mesa de control",
   ];
+  const RECARGA_METODO_SHORT = ["RecargaKlic", "WhatsApp", "Web", "Mesa de control"];
   const RECARGA_METODO_COLORS = ["#2563b5", "#0d8a5a", "#c47a00", "#6b4f9a"];
 
   const chartColors = {
@@ -345,8 +346,7 @@
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              position: "bottom",
-              labels: { boxWidth: 12, font: { weight: "600" }, color: chartColors.navy },
+              display: false,
             },
             tooltip: {
               callbacks: {
@@ -362,14 +362,13 @@
         },
       });
       if (cssMetodoPie) cssMetodoPie.hidden = true;
-      if (cssMetodoPieLegend) cssMetodoPieLegend.hidden = true;
     }
     return true;
   }
 
-  function paintCssPie(el, legendEl, parts) {
+  function paintCssPie(el, legendEl, parts, { shortLabels = false } = {}) {
     const total = parts.reduce((sum, p) => sum + p.value, 0);
-    if (el) {
+    if (el && !el.hidden) {
       if (!total) {
         el.style.background = "rgba(15, 36, 64, 0.08)";
       } else {
@@ -387,11 +386,17 @@
       }
     }
     if (legendEl) {
+      legendEl.hidden = false;
       const denom = Math.max(1, total);
       legendEl.innerHTML = parts
-        .map((p) => {
+        .map((p, i) => {
           const pct = total ? Math.round((p.value / denom) * 100) : 0;
-          return `<li><span class="css-pie-swatch" style="background:${p.color}"></span>${p.label} · ${p.value} (${pct}%)</li>`;
+          const label = shortLabels && RECARGA_METODO_SHORT[i] ? RECARGA_METODO_SHORT[i] : p.label;
+          return `<li>
+            <span class="css-pie-swatch" style="background:${p.color}"></span>
+            <span>${label}</span>
+            <span class="css-pie-count">${p.value} · ${pct}%</span>
+          </li>`;
         })
         .join("");
     }
@@ -413,7 +418,8 @@
         label,
         value: (stats.metodoCounts || [])[i] || 0,
         color: RECARGA_METODO_COLORS[i],
-      }))
+      })),
+      { shortLabels: true }
     );
   }
 
