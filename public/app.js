@@ -9,12 +9,20 @@
   const toast = document.getElementById("toast");
 
   const MATRIX_ROWS = [
-    { key: "soporte", label: "Soporte recibido" },
-    { key: "espera", label: "Tiempo de espera para ser atendido" },
-    { key: "resolucion", label: "Resolución de dudas o problemas" },
-    { key: "amabilidad", label: "Amabilidad y empatía del agente" },
-    { key: "conocimiento", label: "Conocimiento y claridad del agente" },
-    { key: "trato", label: "Trato recibido durante la interacción" },
+    { key: "contacto", label: "Facilidad para contactar" },
+    { key: "tiempo", label: "Tiempo de respuesta" },
+    { key: "primerContacto", label: "Resolución en el primer contacto" },
+    { key: "atencion", label: "Atención y claridad del agente" },
+  ];
+
+  const MOTIVO_RAZONES = [
+    "Atención del ejecutivo",
+    "Mesa de Control",
+    "RecargaKlic / activación de chips",
+    "Material POP",
+    "Ganancias, comisiones o incentivos",
+    "Productos y surtido",
+    "Otro",
   ];
 
   const MESA_MEJORAS = [
@@ -88,16 +96,16 @@
   ];
 
   const SCALE_GANANCIAS = [
-    { value: 1, label: "Muy bajas" },
-    { value: 2, label: "Bajas" },
-    { value: 3, label: "Aceptables" },
-    { value: 4, label: "Buenas" },
-    { value: 5, label: "Excelentes" },
+    { value: 1, label: "Nada atractiva" },
+    { value: 2, label: "Poco atractiva" },
+    { value: 3, label: "Regular" },
+    { value: 4, label: "Atractiva" },
+    { value: 5, label: "Muy atractiva" },
   ];
 
   const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
   const SUBMIT_LOCK_LEGACY = "yaavs_nps_submitted_v1";
-  const MAX_SUBMISSIONS = 2;
+  const MAX_SUBMISSIONS = 99;
 
   function readCookie(name) {
     try {
@@ -156,7 +164,8 @@
     return {
       clave: "",
       nps: null,
-      motivo: "",
+      motivo: null,
+      motivoOtro: "",
       productosYaavs: [],
       visitaEjecutivo: null,
       ejecutivo: null,
@@ -178,6 +187,22 @@
     };
   }
 
+  function newSubmissionId() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return `sub_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function normalizeClave(raw) {
+    return String(raw || "")
+      .trim()
+      .replace(/\s+/g, "")
+      .toUpperCase();
+  }
+
+  function isValidClave(raw) {
+    return /^[A-Z0-9][A-Z0-9._-]{3,24}$/.test(normalizeClave(raw));
+  }
+
   function resetAnswers() {
     Object.assign(state.answers, blankAnswers());
     state._lastError = null;
@@ -191,8 +216,10 @@
   }
 
   const state = {
-    stepId: window.__YAAVS_NPS_LOCKED__ || hasReachedLimit() ? "already" : "welcome",
+    stepId: "welcome",
     submitting: false,
+    submittedOnce: false,
+    submissionId: newSubmissionId(),
     answers: blankAnswers(),
   };
 
@@ -218,6 +245,7 @@
       { id: "welcome", kind: "welcome" },
       { id: "clave", kind: "clave", section: "Identificación" },
       { id: "nps", kind: "nps", section: "Recomendación y experiencia" },
+      { id: "motivo", kind: "choice", section: "Recomendación y experiencia" },
       { id: "productosYaavs", kind: "productos", section: "Productos" },
       { id: "visitaEjecutivo", kind: "choice", section: "Ejecutivo comercial" },
       { id: "ejecutivo", kind: "scale", section: "Ejecutivo comercial" },
@@ -306,9 +334,12 @@
       case "welcome":
         return true;
       case "clave":
-        return a.clave.trim().length >= 3;
+        return isValidClave(a.clave);
       case "nps":
         return typeof a.nps === "number";
+      case "motivo":
+        if (a.motivo === "Otro") return a.motivoOtro.trim().length > 0 && a.motivoOtro.length <= 300;
+        return !!a.motivo;
       case "productosYaavs":
         return a.productosYaavs.length >= 1;
       case "visitaEjecutivo":
@@ -348,7 +379,7 @@
     }
   }
 
-  function go(delta) {
+  async function go(delta) {
     const steps = getVisibleSteps();
     const i = currentIndex();
     const next = steps[i + delta];
@@ -357,9 +388,19 @@
       showToast("Completa este paso para continuar");
       return;
     }
-    // Segunda vez: advertencia al salir del inicio.
-    if (delta > 0 && state.stepId === "welcome" && getSubmitCount() === 1) {
-      if (!confirmSecondAttempt()) return;
+    if (delta > 0 && state.stepId === "clave") {
+      const clave = normalizeClave(state.answers.clave);
+      state.answers.clave = clave;
+      try {
+        const res = await fetch(`/api/clave-status?clave=${encodeURIComponent(clave)}`, { cache: "no-store" });
+        const data = await res.json();
+        if (data && data.recentWarning) {
+          const ok = window.confirm(
+            "Ya hay una respuesta reciente con esta clave. Si es una corrección o una respuesta nueva legítima, puedes continuar."
+          );
+          if (!ok) return;
+        }
+      } catch (_) {}
     }
     state.stepId = next.id;
     render();
@@ -376,7 +417,7 @@
       <div class="actions">
         ${back ? `<button type="button" class="btn btn-ghost" data-action="back">Atrás</button>` : ""}
         <button type="button" class="btn btn-primary" data-action="${submit ? "submit" : "next"}" ${
-          canContinue(state.stepId) ? "" : "disabled"
+          canContinue(state.stepId) && !state.submitting ? "" : "disabled"
         }>
           ${primary}
         </button>
@@ -423,9 +464,9 @@
       <section class="card step">
         <span class="section-tag">Identificación</span>
         <h2 class="question-title">¿Cuál es tu clave YAAVSER?</h2>
-        <p class="question-help">Escribe tu clave YAAVSER completa.</p>
-        <input class="field" id="clave" type="text" autocomplete="off" maxlength="80"
-          placeholder="Ej. YAAVSER-12345" value="${escapeAttr(state.answers.clave)}" />
+        <p class="question-help">Sin espacios. Se convertirá a mayúsculas. Ejemplo: 23CL04682</p>
+        <input class="field" id="clave" type="text" autocomplete="off" maxlength="25"
+          placeholder="Ej. 23CL04682" value="${escapeAttr(state.answers.clave)}" />
         <input class="hp" name="website" id="website" tabindex="-1" autocomplete="off"
           style="position:absolute;left:-9999px;opacity:0;height:0;width:0" value="${escapeAttr(
             state.answers.website
@@ -435,7 +476,8 @@
     `);
     const input = root.querySelector("#clave");
     input.addEventListener("input", () => {
-      state.answers.clave = input.value;
+      state.answers.clave = normalizeClave(input.value);
+      if (input.value !== state.answers.clave) input.value = state.answers.clave;
       refreshNext(root);
     });
     root.querySelector("#website").addEventListener("input", (e) => {
@@ -473,6 +515,64 @@
       });
     });
     return root;
+  }
+
+  function renderMotivo() {
+    const extra =
+      state.answers.motivo === "Otro"
+        ? `<textarea class="field" id="motivoOtro" maxlength="300" placeholder="Cuéntanos la razón…">${escapeHtml(
+            state.answers.motivoOtro
+          )}</textarea>
+        <div class="char-count"><span id="motivoOtroCount">${state.answers.motivoOtro.length}</span>/300</div>`
+        : "";
+    const root = el(`
+      <section class="card step">
+        <span class="section-tag">Sección 1 · Motivo</span>
+        <h2 class="question-title">¿Cuál es la principal razón de tu calificación?</h2>
+        <p class="question-help">Obligatoria para promotores, pasivos y detractores.</p>
+        ${renderChoiceOptionsHtml("motivo", MOTIVO_RAZONES)}
+        ${extra}
+        ${actionsHtml()}
+      </section>
+    `);
+    bindChoice(root, "motivo", () => render());
+    const ta = root.querySelector("#motivoOtro");
+    if (ta) {
+      ta.addEventListener("input", () => {
+        state.answers.motivoOtro = ta.value;
+        const count = root.querySelector("#motivoOtroCount");
+        if (count) count.textContent = String(ta.value.length);
+        refreshNext(root);
+      });
+      setTimeout(() => ta.focus(), 50);
+    }
+    return root;
+  }
+
+  function renderChoiceOptionsHtml(key, options) {
+    return `<div class="choices">${options
+      .map((o) => {
+        const selected = state.answers[key] === o ? "is-selected" : "";
+        return `<button type="button" class="choice ${selected}" data-val="${escapeAttr(o)}">
+          <span class="mark"></span><span>${escapeHtml(o)}</span>
+        </button>`;
+      })
+      .join("")}</div>`;
+  }
+
+  function bindChoice(root, key, onChange) {
+    root.querySelectorAll("[data-val]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.answers[key] = btn.dataset.val;
+        if (key === "motivo" && btn.dataset.val !== "Otro") state.answers.motivoOtro = "";
+        if (onChange) onChange();
+        else {
+          root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
+          btn.classList.add("is-selected");
+          refreshNext(root);
+        }
+      });
+    });
   }
 
   function renderScale({ section, title, help, key, options }) {
@@ -805,10 +905,12 @@
     `);
   }
 
-  function visibleValue(v) {
-    if (v === null || v === undefined) return "No aplica";
+  function visibleValue(v, { shown = true } = {}) {
+    if (!shown) return "No aplica";
+    if (v === null || v === undefined) return "Sin respuesta";
+    if (Array.isArray(v)) return v.length ? v.join(" | ") : "Sin respuesta";
     const s = String(v).trim();
-    return s === "" ? "No aplica" : s;
+    return s === "" ? "Sin respuesta" : s;
   }
 
   function buildPayload() {
@@ -817,35 +919,39 @@
     const recargaSi = a.recargaUso === "Sí";
     const popSi = a.popUso === "Sí";
     const otherDist = hasOtherDistribuidor();
+    const mesaNeeds = mesaSi && mesaNeedsImprove();
+    const recargaNeeds = recargaSi && typeof a.recargaExp === "number" && a.recargaExp <= 3;
+    const popNeeds = popSi && typeof a.popSat === "number" && a.popSat <= 3;
+    const motivo = a.motivo === "Otro" ? `Otro: ${a.motivoOtro.trim()}` : a.motivo;
 
     return {
       timestamp: new Date().toISOString(),
-      clave: a.clave.trim(),
+      submissionId: state.submissionId,
+      id: state.submissionId,
+      clave: normalizeClave(a.clave),
       nps: a.nps,
-      motivo: "",
-      productosYaavs: a.productosYaavs.join(" | "),
-      visitaEjecutivo: a.visitaEjecutivo,
-      ejecutivo: a.ejecutivo,
-      mesaUso: a.mesaUso,
-      mesa_soporte: mesaSi ? a.mesaMatrix.soporte : "No aplica",
-      mesa_espera: mesaSi ? a.mesaMatrix.espera : "No aplica",
-      mesa_resolucion: mesaSi ? a.mesaMatrix.resolucion : "No aplica",
-      mesa_amabilidad: mesaSi ? a.mesaMatrix.amabilidad : "No aplica",
-      mesa_conocimiento: mesaSi ? a.mesaMatrix.conocimiento : "No aplica",
-      mesa_trato: mesaSi ? a.mesaMatrix.trato : "No aplica",
-      mesaMejoras: mesaSi ? a.mesaMejoras.join(" | ") || "No aplica" : "No aplica",
-      recargaMetodo: a.recargaMetodo,
-      recargaUso: a.recargaUso,
-      recargaExp: recargaSi ? a.recargaExp ?? "No aplica" : "No aplica",
-      recargaMejora: recargaSi ? a.recargaMejora ?? "No aplica" : "No aplica",
-      popUso: a.popUso,
-      popSat: popSi ? a.popSat ?? "No aplica" : "No aplica",
-      popMejora: popSi ? a.popMejora ?? "No aplica" : "No aplica",
-      rentabilidad: a.rentabilidad,
-      distribuidores: a.distribuidores.trim(),
-      competencia: otherDist ? a.competencia.trim() : "No aplica",
-      antiguedad: "No aplica",
-      mejoraGeneral: a.mejoraGeneral.trim(),
+      motivo: visibleValue(motivo),
+      motivoOtro: a.motivo === "Otro" ? a.motivoOtro.trim() : "No aplica",
+      productosYaavs: visibleValue(a.productosYaavs),
+      visitaEjecutivo: visibleValue(a.visitaEjecutivo),
+      ejecutivo: visibleValue(a.ejecutivo),
+      mesaUso: visibleValue(a.mesaUso),
+      mesa_contacto: visibleValue(a.mesaMatrix.contacto, { shown: mesaSi }),
+      mesa_tiempo: visibleValue(a.mesaMatrix.tiempo, { shown: mesaSi }),
+      mesa_primerContacto: visibleValue(a.mesaMatrix.primerContacto, { shown: mesaSi }),
+      mesa_atencion: visibleValue(a.mesaMatrix.atencion, { shown: mesaSi }),
+      mesaMejoras: visibleValue(a.mesaMejoras, { shown: mesaNeeds }),
+      recargaMetodo: visibleValue(a.recargaMetodo),
+      recargaUso: visibleValue(a.recargaUso),
+      recargaExp: visibleValue(a.recargaExp, { shown: recargaSi }),
+      recargaMejora: visibleValue(a.recargaMejora, { shown: recargaNeeds }),
+      popUso: visibleValue(a.popUso),
+      popSat: visibleValue(a.popSat, { shown: popSi }),
+      popMejora: visibleValue(a.popMejora, { shown: popNeeds }),
+      rentabilidad: visibleValue(a.rentabilidad),
+      distribuidores: visibleValue(a.distribuidores),
+      competencia: visibleValue(a.competencia, { shown: otherDist }),
+      mejoraGeneral: a.mejoraGeneral.trim() || "Sin respuesta",
       website: a.website,
       sheetName: cfg.sheetName || "Respuestas NPS",
     };
@@ -853,31 +959,31 @@
 
   function formatPayloadForSheet(payload) {
     return [
-      `Clave: ${visibleValue(payload.clave)}`,
-      `NPS: ${visibleValue(payload.nps)}`,
-      `Productos YAAVS: ${visibleValue(payload.productosYaavs)}`,
-      `Visita ejecutivo: ${visibleValue(payload.visitaEjecutivo)}`,
-      `Ejecutivo: ${visibleValue(payload.ejecutivo)}`,
-      `Mesa uso: ${visibleValue(payload.mesaUso)}`,
-      `Mesa soporte: ${visibleValue(payload.mesa_soporte)}`,
-      `Mesa espera: ${visibleValue(payload.mesa_espera)}`,
-      `Mesa resolución: ${visibleValue(payload.mesa_resolucion)}`,
-      `Mesa amabilidad: ${visibleValue(payload.mesa_amabilidad)}`,
-      `Mesa conocimiento: ${visibleValue(payload.mesa_conocimiento)}`,
-      `Mesa trato: ${visibleValue(payload.mesa_trato)}`,
-      `Mesa mejoras: ${visibleValue(payload.mesaMejoras)}`,
-      `Método recarga: ${visibleValue(payload.recargaMetodo)}`,
-      `RecargaKlic uso: ${visibleValue(payload.recargaUso)}`,
-      `RecargaKlic exp: ${visibleValue(payload.recargaExp)}`,
-      `RecargaKlic mejora: ${visibleValue(payload.recargaMejora)}`,
-      `POP uso: ${visibleValue(payload.popUso)}`,
-      `POP sat: ${visibleValue(payload.popSat)}`,
-      `POP mejora: ${visibleValue(payload.popMejora)}`,
-      `Ganancias: ${visibleValue(payload.rentabilidad)}`,
-      `Rentabilidad: ${visibleValue(payload.rentabilidad)}`,
-      `Distribuidores: ${visibleValue(payload.distribuidores)}`,
-      `Competencia: ${visibleValue(payload.competencia)}`,
-      `Mejora general: ${visibleValue(payload.mejoraGeneral)}`,
+      `Clave: ${payload.clave}`,
+      `NPS: ${payload.nps}`,
+      `Motivo: ${payload.motivo}`,
+      `Motivo otro: ${payload.motivoOtro}`,
+      `Productos YAAVS: ${payload.productosYaavs}`,
+      `Visita ejecutivo: ${payload.visitaEjecutivo}`,
+      `Ejecutivo: ${payload.ejecutivo}`,
+      `Mesa uso: ${payload.mesaUso}`,
+      `Mesa contacto: ${payload.mesa_contacto}`,
+      `Mesa tiempo: ${payload.mesa_tiempo}`,
+      `Mesa primer contacto: ${payload.mesa_primerContacto}`,
+      `Mesa atención: ${payload.mesa_atencion}`,
+      `Mesa mejoras: ${payload.mesaMejoras}`,
+      `Método recarga: ${payload.recargaMetodo}`,
+      `RecargaKlic uso: ${payload.recargaUso}`,
+      `RecargaKlic exp: ${payload.recargaExp}`,
+      `RecargaKlic mejora: ${payload.recargaMejora}`,
+      `POP uso: ${payload.popUso}`,
+      `POP sat: ${payload.popSat}`,
+      `POP mejora: ${payload.popMejora}`,
+      `Ganancias: ${payload.rentabilidad}`,
+      `Distribuidores: ${payload.distribuidores}`,
+      `Competencia: ${payload.competencia}`,
+      `Mejora general: ${payload.mejoraGeneral}`,
+      `Submission ID: ${payload.submissionId}`,
       `JSON: ${JSON.stringify(payload)}`,
     ].join("\n");
   }
@@ -900,12 +1006,18 @@
   }
 
   async function submitForm() {
-    if (hasReachedLimit()) {
-      state.stepId = "already";
-      render();
-      return;
-    }
-    if (!canContinue("mejoraGeneral") || state.submitting) return;
+    if (state.submitting || state.submittedOnce) return;
+    if (!canContinue("mejoraGeneral")) return;
+    const sentKey = `yaavs_nps_sent_${state.submissionId}`;
+    try {
+      if (sessionStorage.getItem(sentKey) === "1") {
+        state.submittedOnce = true;
+        state.stepId = "done";
+        render();
+        return;
+      }
+    } catch (_) {}
+
     state.submitting = true;
     render();
 
@@ -914,29 +1026,14 @@
     const endpoint = String(cfg.endpoint || "").trim();
 
     try {
-      // Primero al panel (tiempo real), luego a Sheets.
       const panelRes = await fetch("/api/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (panelRes.status === 409) {
-        const errJson = await panelRes.json().catch(() => ({}));
-        if (errJson && errJson.code === "limit_reached") {
-          try {
-            localStorage.setItem(SUBMIT_COUNT_KEY, String(MAX_SUBMISSIONS));
-            sessionStorage.setItem(SUBMIT_COUNT_KEY, String(MAX_SUBMISSIONS));
-          } catch (_) {}
-          state.submitting = false;
-          state.stepId = "already";
-          state._lastError = null;
-          render();
-          return;
-        }
-        throw new Error(errJson.error || "No se pudo guardar (límite de respuestas)");
-      }
+      const errJson = await panelRes.json().catch(() => ({}));
       if (!panelRes.ok) {
-        throw new Error("No se pudo guardar en el panel de resultados");
+        throw new Error(errJson.error || "No se pudo guardar en el panel de resultados");
       }
 
       if (mode === "google-forms" || cfg.formAction) {
@@ -948,7 +1045,6 @@
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify(payload),
         });
-
         if (!res.ok && res.type !== "opaque") {
           let message = "No se pudo guardar en Sheets";
           try {
@@ -959,7 +1055,11 @@
         }
       }
 
+      try {
+        sessionStorage.setItem(sentKey, "1");
+      } catch (_) {}
       markSubmitted();
+      state.submittedOnce = true;
       state.submitting = false;
       state.stepId = "done";
       state._lastError = null;
@@ -989,6 +1089,9 @@
         break;
       case "nps":
         node = renderNps();
+        break;
+      case "motivo":
+        node = renderMotivo();
         break;
       case "productosYaavs":
         node = renderProductChecks();
@@ -1081,7 +1184,8 @@
       case "rentabilidad":
         node = renderScale({
           section: "Sección 6 · Ganancias y fidelización",
-          title: "En general, ¿cómo calificas las ganancias que obtienes al trabajar con YAAVS?",
+          title:
+            "Considerando comisiones, incentivos y esfuerzo de venta, ¿qué tan atractiva es la rentabilidad que obtienes con YAAVS?",
           key: "rentabilidad",
           options: SCALE_GANANCIAS,
         });
@@ -1131,6 +1235,8 @@
         }
         if (!confirmSecondAttempt()) return;
         resetAnswers();
+        state.submissionId = newSubmissionId();
+        state.submittedOnce = false;
         state.stepId = "welcome";
         render();
       });

@@ -504,7 +504,7 @@ body {
 
 .filters-bar {
   display: grid;
-  grid-template-columns: 1.6fr repeat(2, 0.9fr) repeat(2, 0.75fr) auto;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.55rem;
   align-items: center;
   background: rgba(255, 255, 255, 0.88);
@@ -846,6 +846,119 @@ body {
   }
 
   .filters-bar {
+    grid-template-columns: 1fr;
+  }
+}
+
+.meta-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.meta-strip div {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 0.75rem 0.85rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.meta-strip strong {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.chart-canvas-wrap-trend {
+  min-height: 200px;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 0.85rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.mini-table th,
+.mini-table td {
+  text-align: left;
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.cases-table input,
+.cases-table select {
+  width: 100%;
+  min-width: 7rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.45rem;
+  font: inherit;
+}
+
+.tag-warn {
+  display: inline-block;
+  margin-right: 0.35rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  background: #fff4e0;
+  color: #8a5a00;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.login-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  width: min(420px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 1.4rem;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.login-card h1 {
+  margin: 0;
+  font-family: var(--display);
+}
+
+.login-card form {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.login-error {
+  color: var(--bad);
+  font-weight: 700;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .meta-strip,
+  .analysis-grid {
     grid-template-columns: 1fr;
   }
 }

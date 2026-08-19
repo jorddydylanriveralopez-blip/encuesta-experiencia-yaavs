@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Acceso al tablero NPS · YAAVS</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <link rel="stylesheet" href="/resultados.css?v=20260819nps" />
+  </head>
+  <body>
+    <main class="login-wrap">
+      <section class="login-card">
+        <img src="/assets/logo-yaavs.png" alt="YAAVS" width="120" height="36" />
+        <h1>Tablero NPS</h1>
+        <p>Acceso restringido. Ingresa la contraseña del equipo YAAVS.</p>
+        <form id="loginForm">
+          <input class="filter-input" type="password" id="password" placeholder="Contraseña" autocomplete="current-password" required />
+          <button type="submit" class="btn-clear" id="loginBtn">Entrar</button>
+          <p class="login-error" id="loginError" hidden></p>
+        </form>
+        <a class="ghost-link" href="/">Ir al cuestionario</a>
+      </section>
+    </main>
+    <script>
+      document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const err = document.getElementById("loginError");
+        const btn = document.getElementById("loginBtn");
+        btn.disabled = true;
+        err.hidden = true;
+        try {
+          const res = await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: document.getElementById("password").value }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "No se pudo entrar");
+          location.href = "/resultados";
+        } catch (ex) {
+          err.textContent = ex.message;
+          err.hidden = false;
+          btn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#eef4fa" />
-    <title>Encuesta integral de experiencia YAAVS (NPS)</title>
+    <title>Tablero NPS YAAVS</title>
     <link rel="icon" href="./favicon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./resultados.css?v=20260813legend" />
+    <link rel="stylesheet" href="./resultados.css?v=20260819nps" />
   </head>
   <body>
     <div class="atmosphere" aria-hidden="true">
@@ -33,23 +33,25 @@
       </div>
       <div class="top-actions">
         <button type="button" class="ghost-link" id="btnExportCsv">CSV</button>
+        <button type="button" class="ghost-link" id="btnLogout">Salir</button>
         <a class="ghost-link" href="./">Cuestionario</a>
       </div>
     </header>
 
     <main class="layout">
+      <section class="meta-strip" id="metaStrip"></section>
       <section class="kpis" id="kpis"></section>
 
       <section class="charts-block" aria-label="Gráficas NPS">
         <header class="charts-block-head">
           <h2>Gráficas NPS</h2>
-          <p>Se actualizan en vivo con cada respuesta</p>
+          <p>Los filtros recalculan todos los indicadores</p>
         </header>
         <div class="charts-grid">
           <article class="chart-card">
             <header class="chart-head">
-              <h3>Promedio NPS</h3>
-              <p class="chart-sub">Escala 0–10 · vista pastel</p>
+              <h3>Calificación promedio</h3>
+              <p class="chart-sub">Escala 0–10 · no incluye No aplica ni omitidas</p>
             </header>
             <div class="avg-wrap">
               <div class="avg-meter" aria-hidden="true">
@@ -75,20 +77,14 @@
               <p class="chart-sub">Cuántas personas eligieron cada número (0–10)</p>
             </header>
             <div class="css-bars" id="cssDistBars" role="img" aria-label="Distribución NPS 0 a 10"></div>
-            <div class="chart-canvas-wrap chart-canvas-fallback" data-chart-optional hidden>
-              <canvas id="chartNpsDist" height="160"></canvas>
-            </div>
           </article>
 
           <article class="chart-card">
             <header class="chart-head">
               <h3>Segmentos NPS</h3>
-              <p class="chart-sub">Promotores · Pasivos · Detractores</p>
+              <p class="chart-sub">Promotores 9–10 · Pasivos 7–8 · Detractores 0–6</p>
             </header>
             <div class="css-segments" id="cssSegments"></div>
-            <div class="chart-canvas-wrap chart-canvas-wrap-donut chart-canvas-fallback" data-chart-optional hidden>
-              <canvas id="chartSegments" height="180"></canvas>
-            </div>
           </article>
 
           <article class="chart-card chart-card-metodo">
@@ -107,14 +103,20 @@
         </div>
       </section>
 
-      <section class="filters-bar" id="filtersBar">
-        <input
-          type="search"
-          id="filterSearch"
-          class="filter-input"
-          placeholder="Buscar clave, motivo o producto…"
-          autocomplete="off"
-        />
+      <section class="charts-block">
+        <article class="chart-card">
+          <header class="chart-head">
+            <h3>Tendencia semanal del índice NPS</h3>
+            <p class="chart-sub" id="trendHint">Comparación contra el periodo anterior · siempre se muestra n</p>
+          </header>
+          <div class="chart-canvas-wrap chart-canvas-wrap-trend">
+            <canvas id="chartTrend" height="180"></canvas>
+          </div>
+        </article>
+      </section>
+
+      <section class="filters-bar filters-bar-wide" id="filtersBar">
+        <input type="search" id="filterSearch" class="filter-input" placeholder="Buscar producto o motivo…" autocomplete="off" />
         <select id="filterSegment" class="filter-select" aria-label="Segmento NPS">
           <option value="all">Todos los segmentos</option>
           <option value="promoter">Promotores</option>
@@ -126,16 +128,62 @@
           <option value="si">Usaron Mesa</option>
           <option value="no">No usaron Mesa</option>
         </select>
+        <select id="filterRecarga" class="filter-select" aria-label="RecargaKlic">
+          <option value="all">RecargaKlic: todas</option>
+          <option value="si">Usaron RecargaKlic</option>
+          <option value="no">No usaron RecargaKlic</option>
+        </select>
+        <select id="filterMetodo" class="filter-select" aria-label="Canal de activación">
+          <option value="all">Canal: todos</option>
+          <option value="App de RecargaKlic">App RecargaKlic</option>
+          <option value="Bot de WhatsApp (Alphabot)">WhatsApp</option>
+          <option value="RecargaKlic Web">Web</option>
+          <option value="Mesa de control">Mesa de control</option>
+        </select>
+        <select id="filterProducto" class="filter-select" aria-label="Producto">
+          <option value="all">Producto: todos</option>
+          <option value="Chips multimarca">Chips multimarca</option>
+          <option value="Portabilidades">Portabilidades</option>
+          <option value="eSIM">eSIM</option>
+          <option value="Liberaciones">Liberaciones</option>
+          <option value="Internet inalámbrico">Internet inalámbrico</option>
+          <option value="Tiempo aire">Tiempo aire</option>
+          <option value="Planes de renta">Planes de renta</option>
+        </select>
+        <select id="filterVisita" class="filter-select" aria-label="Visita del ejecutivo">
+          <option value="all">Visita: todas</option>
+          <option value="Dos o más veces por semana">2+ por semana</option>
+          <option value="Una vez por semana">1 por semana</option>
+          <option value="Una vez cada 15 días">Cada 15 días</option>
+          <option value="Una vez al mes">Una vez al mes</option>
+          <option value="Con menor frecuencia">Menor frecuencia</option>
+          <option value="No he recibido visitas de mi ejecutivo">Sin visitas</option>
+        </select>
         <input type="date" id="filterFrom" class="filter-date" aria-label="Desde" />
         <input type="date" id="filterTo" class="filter-date" aria-label="Hasta" />
         <button type="button" class="btn-clear" id="btnClearFilters">Limpiar</button>
+      </section>
+
+      <section class="charts-block" id="analysisBlock">
+        <header class="charts-block-head">
+          <h2>Análisis de causas</h2>
+          <p>No se presentan correlaciones como causas comprobadas. Solo patrones observados.</p>
+        </header>
+        <div id="analysisGrid" class="analysis-grid"></div>
+      </section>
+
+      <section class="charts-block" id="casesBlock">
+        <header class="charts-block-head">
+          <h2>Seguimiento de casos</h2>
+          <p>Detractores y pasivos · responsable, estatus y compromiso</p>
+        </header>
+        <div id="casesTable" class="cases-wrap"></div>
       </section>
 
       <section class="list-head">
         <h2>Respuestas</h2>
         <span class="list-count" id="listCount">0</span>
       </section>
-
       <section class="cards-grid" id="cardsGrid"></section>
     </main>
 
@@ -154,6 +202,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="./resultados.js?v=20260813legend" defer></script>
+    <script src="./resultados.js?v=20260819nps" defer></script>
   </body>
 </html>
