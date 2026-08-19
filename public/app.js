@@ -434,6 +434,19 @@
     root.querySelectorAll("[data-action='submit']").forEach((b) =>
       b.addEventListener("click", () => submitForm())
     );
+    if (window.matchMedia("(pointer: fine)").matches) {
+      root.addEventListener("pointermove", (e) => {
+        const r = root.getBoundingClientRect();
+        root.style.setProperty("--mx", `${((e.clientX - r.left) / r.width) * 100}%`);
+        root.style.setProperty("--my", `${((e.clientY - r.top) / r.height) * 100}%`);
+      });
+    }
+  }
+
+  function pulseSelected(btn) {
+    btn.classList.remove("is-burst");
+    void btn.offsetWidth;
+    btn.classList.add("is-burst");
   }
 
   function refreshNext(root) {
@@ -511,8 +524,9 @@
     root.querySelectorAll("[data-nps]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.answers.nps = Number(btn.dataset.nps);
-        root.querySelectorAll("[data-nps]").forEach((b) => b.classList.remove("is-selected"));
+        root.querySelectorAll("[data-nps]").forEach((b) => b.classList.remove("is-selected", "is-burst"));
         btn.classList.add("is-selected");
+        pulseSelected(btn);
         refreshNext(root);
       });
     });
@@ -571,6 +585,7 @@
         else {
           root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
           btn.classList.add("is-selected");
+          pulseSelected(btn);
           refreshNext(root);
         }
       });
@@ -603,6 +618,7 @@
         state.answers[key] = Number(btn.dataset.val);
         root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
         btn.classList.add("is-selected");
+        pulseSelected(btn);
         refreshNext(root);
       });
     });
@@ -634,6 +650,7 @@
         state.answers[key] = btn.dataset.val;
         root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
         btn.classList.add("is-selected");
+        pulseSelected(btn);
         refreshNext(root);
       });
     });
@@ -676,6 +693,7 @@
         state.answers.mesaMatrix[key] = Number(btn.dataset.val);
         root.querySelectorAll(`[data-row="${key}"]`).forEach((b) => b.classList.remove("is-selected"));
         btn.classList.add("is-selected");
+        pulseSelected(btn);
         refreshNext(root);
       });
     });
@@ -715,6 +733,7 @@
           }
           list.push(val);
           btn.classList.add("is-selected");
+          pulseSelected(btn);
         }
         refreshNext(root);
       });
@@ -747,6 +766,7 @@
         state.answers[key] = btn.dataset.val;
         root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
         btn.classList.add("is-selected");
+        pulseSelected(btn);
         refreshNext(root);
       });
     });
@@ -782,6 +802,7 @@
         } else {
           list.push(val);
           btn.classList.add("is-selected");
+          pulseSelected(btn);
         }
         refreshNext(root);
       });
