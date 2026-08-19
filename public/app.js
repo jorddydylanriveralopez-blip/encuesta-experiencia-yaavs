@@ -220,6 +220,7 @@
     submitting: false,
     submittedOnce: false,
     submissionId: newSubmissionId(),
+    navDir: 1,
     answers: blankAnswers(),
   };
 
@@ -388,6 +389,7 @@
       showToast("Completa este paso para continuar");
       return;
     }
+    state.navDir = delta >= 0 ? 1 : -1;
     if (delta > 0 && state.stepId === "clave") {
       const clave = normalizeClave(state.answers.clave);
       state.answers.clave = clave;
@@ -1207,6 +1209,7 @@
     }
 
     app.replaceChildren(node);
+    if (state.navDir < 0) node.classList.add("is-back");
     bindCommon(node);
 
     const retry = node.querySelector("[data-action='retry']");
