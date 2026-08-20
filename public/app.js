@@ -1266,7 +1266,7 @@
       case "popSat":
         node = renderScale({
           section: "Sección 5 · Material de publicidad",
-          title: "¿Qué tan satisfecho estás con el material de publicidad que se ha colocado en tu negocio?",
+          title: "¿Qué tan satisfecho estás con el material publicitario que se ha colocado en tu punto de venta?",
           key: "popSat",
           options: SCALE_SAT,
         });
