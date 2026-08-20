@@ -1189,7 +1189,7 @@
       case "recargaMetodo":
         node = renderChoice({
           section: "Sección 4 · App RecargaKlic",
-          title: "¿Cuál es el medio por el cual activas tus CHIPS?",
+          title: "¿Cuál es el principal medio por el cual activas tus chips?",
           help: "Selecciona el medio que utilizas principalmente para activar tus chips.",
           key: "recargaMetodo",
           options: RECARGA_METODOS,
