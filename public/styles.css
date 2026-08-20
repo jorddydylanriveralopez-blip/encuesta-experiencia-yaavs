@@ -309,6 +309,16 @@ body {
   text-align: center;
 }
 
+.welcome .actions {
+  justify-content: center;
+}
+
+.welcome .hint-enter {
+  width: 100%;
+  text-align: center;
+  margin-top: 4px;
+}
+
 .kicker {
   display: inline-flex;
   align-items: center;
