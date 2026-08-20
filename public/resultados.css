@@ -245,6 +245,47 @@ body {
   letter-spacing: -0.02em;
 }
 
+.chart-head-trend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.chart-head-trend .chart-sub {
+  margin-bottom: 0;
+}
+
+.trend-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(15, 36, 64, 0.06);
+  border: 1px solid var(--line);
+}
+
+.trend-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.trend-btn.is-active {
+  background: #fff;
+  color: var(--navy, #0f2440);
+  box-shadow: 0 4px 12px rgba(15, 36, 64, 0.08);
+}
+
 .chart-sub {
   margin: 0.25rem 0 0.85rem;
   color: var(--muted);

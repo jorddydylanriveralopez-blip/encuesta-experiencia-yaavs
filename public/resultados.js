@@ -28,6 +28,9 @@
   const avgValue = document.getElementById("avgValue");
   const avgHint = document.getElementById("avgHint");
   const trendHint = document.getElementById("trendHint");
+  const trendTitle = document.getElementById("trendTitle");
+  const trendBtnDay = document.getElementById("trendBtnDay");
+  const trendBtnWeek = document.getElementById("trendBtnWeek");
   const cssAvgPie = document.getElementById("cssAvgPie");
   const cssAvgPieLegend = document.getElementById("cssAvgPieLegend");
   const cssMetodoPie = document.getElementById("cssMetodoPie");
@@ -97,6 +100,7 @@
     cases: {},
     excluded: 0,
     lastCount: 0,
+    trendMode: "day",
     charts: { avgPie: null, metodoPie: null, trend: null },
   };
 
@@ -179,6 +183,61 @@
     return `${tmp.getUTCFullYear()}-S${String(week).padStart(2, "0")}`;
   }
 
+  function dayKey(iso) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+
+  function formatDayLabel(key) {
+    const [y, m, d] = String(key).split("-").map(Number);
+    if (!y || !m || !d) return key;
+    try {
+      return new Date(y, m - 1, d).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
+    } catch (_) {
+      return key;
+    }
+  }
+
+  function buildTrend(list, mode) {
+    const buckets = new Map();
+    list.forEach((r) => {
+      const nps = num(r.nps);
+      const key = mode === "day" ? dayKey(r.receivedAt || r.timestamp) : weekKey(r.receivedAt || r.timestamp);
+      if (nps == null || !key) return;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(nps);
+    });
+    let labels = [...buckets.keys()].sort();
+    if (mode === "day" && labels.length > 45) labels = labels.slice(-45);
+    const values = labels.map((k) => {
+      const xs = buckets.get(k);
+      const p = xs.filter((x) => x >= 9).length;
+      const d = xs.filter((x) => x <= 6).length;
+      return { nps: ((p - d) / xs.length) * 100, n: xs.length };
+    });
+    const displayLabels = mode === "day" ? labels.map(formatDayLabel) : labels;
+    return { labels: displayLabels, values, rawKeys: labels };
+  }
+
+  function periodNps(list, mode) {
+    const now = Date.now();
+    const dayMs = 24 * 3600 * 1000;
+    const span = mode === "day" ? dayMs : dayMs * 7;
+    const cur = list.filter((r) => now - Date.parse(r.receivedAt || r.timestamp || 0) <= span);
+    const prev = list.filter((r) => {
+      const t = Date.parse(r.receivedAt || r.timestamp || 0);
+      return now - t > span && now - t <= span * 2;
+    });
+    return {
+      curNps: computeStats.npsOnly(cur),
+      prevNps: computeStats.npsOnly(prev),
+    };
+  }
+
   function fingerprint(r) {
     return [String(r.clave || "").toUpperCase(), r.nps, r.productosYaavs].join("|").toLowerCase();
   }
@@ -227,31 +286,8 @@
       if (idx >= 0) metodoCounts[idx] += 1;
     });
 
-    const weeks = new Map();
-    list.forEach((r) => {
-      const nps = num(r.nps);
-      const key = weekKey(r.receivedAt || r.timestamp);
-      if (nps == null || !key) return;
-      if (!weeks.has(key)) weeks.set(key, []);
-      weeks.get(key).push(nps);
-    });
-    const trendLabels = [...weeks.keys()].sort();
-    const trendValues = trendLabels.map((k) => {
-      const xs = weeks.get(k);
-      const p = xs.filter((x) => x >= 9).length;
-      const d = xs.filter((x) => x <= 6).length;
-      return { nps: ((p - d) / xs.length) * 100, n: xs.length };
-    });
-
-    const now = Date.now();
-    const weekMs = 7 * 24 * 3600 * 1000;
-    const cur = list.filter((r) => now - Date.parse(r.receivedAt || r.timestamp || 0) <= weekMs);
-    const prev = list.filter((r) => {
-      const t = Date.parse(r.receivedAt || r.timestamp || 0);
-      return now - t > weekMs && now - t <= weekMs * 2;
-    });
-    const curNps = computeStats.npsOnly(cur);
-    const prevNps = computeStats.npsOnly(prev);
+    const trend = buildTrend(list, state.trendMode || "day");
+    const { curNps, prevNps } = periodNps(list, state.trendMode || "day");
 
     const times = list.map((r) => Date.parse(r.receivedAt || r.timestamp || 0)).filter(Number.isFinite);
     const periodFrom = times.length ? new Date(Math.min(...times)) : null;
@@ -267,12 +303,13 @@
       scoresCount: n,
       dist,
       metodoCounts,
-      trendLabels,
-      trendValues,
+      trendLabels: trend.labels,
+      trendValues: trend.values,
       curNps,
       prevNps,
       periodFrom,
       periodTo,
+      trendMode: state.trendMode || "day",
     };
   }
   computeStats.npsOnly = (list) => {
@@ -436,12 +473,16 @@
   function renderMeta(stats) {
     const from = stats.periodFrom ? shortDate(stats.periodFrom.toISOString()) : "—";
     const to = stats.periodTo ? shortDate(stats.periodTo.toISOString()) : "—";
-    const delta = stats.prevNps.nps == null || stats.curNps.nps == null ? "—" : `${(stats.curNps.nps - stats.prevNps.nps).toFixed(0)} pts vs semana previa`;
+    const deltaLabel = stats.trendMode === "day" ? "día previo" : "semana previa";
+    const delta =
+      stats.prevNps.nps == null || stats.curNps.nps == null
+        ? "—"
+        : `${(stats.curNps.nps - stats.prevNps.nps).toFixed(0)} pts vs ${deltaLabel}`;
     metaStrip.innerHTML = `
       <div><strong>Periodo analizado</strong><span>${from} → ${to}</span></div>
       <div><strong>Última actualización</strong><span>${new Date().toLocaleString("es-MX", { dateStyle: "short", timeStyle: "medium" })}</span></div>
       <div><strong>Excluidos</strong><span>${state.excluded} por duplicado o prueba</span></div>
-      <div><strong>Tendencia 7 días</strong><span>${delta} · n=${stats.curNps.n}</span></div>
+      <div><strong>Tendencia</strong><span>${delta} · n=${stats.curNps.n}</span></div>
     `;
   }
 
@@ -460,10 +501,21 @@
     if (avgFill) avgFill.style.width = `${pct}%`;
     if (avgValue) avgValue.textContent = stats.avg == null ? "—" : stats.avg.toFixed(1);
     if (avgHint) avgHint.textContent = stats.scoresCount ? `n = ${stats.scoresCount}` : "Sin datos aún";
+    if (trendTitle) {
+      trendTitle.textContent =
+        stats.trendMode === "day" ? "Tendencia diaria del índice NPS" : "Tendencia semanal del índice NPS";
+    }
     if (trendHint) {
       const cur = stats.curNps.nps == null ? "—" : Math.round(stats.curNps.nps);
       const prev = stats.prevNps.nps == null ? "—" : Math.round(stats.prevNps.nps);
-      trendHint.textContent = `Últimos 7 días: ${cur} (n=${stats.curNps.n}) · Semana previa: ${prev} (n=${stats.prevNps.n})`;
+      trendHint.textContent =
+        stats.trendMode === "day"
+          ? `Hoy: ${cur} (n=${stats.curNps.n}) · Día previo: ${prev} (n=${stats.prevNps.n})`
+          : `Últimos 7 días: ${cur} (n=${stats.curNps.n}) · Semana previa: ${prev} (n=${stats.prevNps.n})`;
+    }
+    if (trendBtnDay && trendBtnWeek) {
+      trendBtnDay.classList.toggle("is-active", stats.trendMode === "day");
+      trendBtnWeek.classList.toggle("is-active", stats.trendMode === "week");
     }
     renderCssCharts(stats);
     if (!ensureCharts()) return;
@@ -710,6 +762,13 @@
     el.addEventListener("input", renderAll);
     el.addEventListener("change", renderAll);
   });
+
+  function setTrendMode(mode) {
+    state.trendMode = mode === "week" ? "week" : "day";
+    renderAll();
+  }
+  if (trendBtnDay) trendBtnDay.addEventListener("click", () => setTrendMode("day"));
+  if (trendBtnWeek) trendBtnWeek.addEventListener("click", () => setTrendMode("week"));
 
   btnClearFilters.addEventListener("click", () => {
     filterSearch.value = "";

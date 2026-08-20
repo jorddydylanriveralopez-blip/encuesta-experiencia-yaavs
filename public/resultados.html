@@ -105,9 +105,15 @@
 
       <section class="charts-block">
         <article class="chart-card">
-          <header class="chart-head">
-            <h3>Tendencia semanal del índice NPS</h3>
-            <p class="chart-sub" id="trendHint">Comparación contra el periodo anterior · siempre se muestra n</p>
+          <header class="chart-head chart-head-trend">
+            <div>
+              <h3 id="trendTitle">Tendencia del índice NPS</h3>
+              <p class="chart-sub" id="trendHint">Comparación contra el periodo anterior · siempre se muestra n</p>
+            </div>
+            <div class="trend-toggle" role="group" aria-label="Periodo de tendencia">
+              <button type="button" class="trend-btn is-active" data-trend="day" id="trendBtnDay">Por día</button>
+              <button type="button" class="trend-btn" data-trend="week" id="trendBtnWeek">Por semana</button>
+            </div>
           </header>
           <div class="chart-canvas-wrap chart-canvas-wrap-trend">
             <canvas id="chartTrend" height="180"></canvas>
@@ -202,6 +208,6 @@
     </dialog>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="./resultados.js?v=20260820once" defer></script>
+    <script src="./resultados.js?v=20260820trend" defer></script>
   </body>
 </html>
