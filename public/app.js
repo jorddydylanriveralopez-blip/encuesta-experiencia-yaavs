@@ -98,7 +98,7 @@
   const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
   const SUBMIT_LOCK_LEGACY = "yaavs_nps_submitted_v1";
   const DRAFT_KEY = "yaavs_nps_draft_v3";
-  const MAX_SUBMISSIONS = 99;
+  const MAX_SUBMISSIONS = 1;
 
   function readCookie(name) {
     try {
@@ -290,9 +290,7 @@
   }
 
   function confirmSecondAttempt() {
-    return window.confirm(
-      "¿Seguro que quieres contestar el cuestionario una segunda vez?\n\nSolo puedes hacerlo 2 veces. Úsalo si te equivocaste en la primera respuesta."
-    );
+    return false;
   }
 
   const state = {
@@ -967,21 +965,11 @@
       `);
     }
 
-    const count = getSubmitCount();
-    const canRetry = count < MAX_SUBMISSIONS;
     return el(`
       <section class="card success step">
         <div class="success-icon">✓</div>
         <h2 class="question-title">¡Gracias por compartir tu experiencia!</h2>
         <p class="lead">Tus respuestas ya quedaron registradas. En YAAVS las usamos para mejorar lo que más importa para tu negocio.</p>
-        ${
-          canRetry
-            ? `<p class="lead" style="margin-top:0.75rem">Si te equivocaste, puedes contestar <strong>una segunda vez</strong>.</p>
-        <div class="actions" style="justify-content:center">
-          <button type="button" class="btn btn-ghost" data-action="second-attempt">Contestar una segunda vez</button>
-        </div>`
-            : `<p class="lead" style="margin-top:0.75rem">Ya usaste tus 2 intentos desde este dispositivo.</p>`
-        }
       </section>
     `);
   }
@@ -992,7 +980,7 @@
         <div class="success-icon">✓</div>
         <h2 class="question-title">Ya respondiste esta encuesta</h2>
         <p class="lead">
-          Gracias. Desde este navegador ya se enviaron las 2 respuestas permitidas
+          Gracias. Desde este navegador ya se registró una respuesta
           y no se puede volver a contestar.
         </p>
       </section>
@@ -1322,23 +1310,6 @@
       backEdit.addEventListener("click", () => {
         state.stepId = "mejoraGeneral";
         state._lastError = null;
-        render();
-      });
-    }
-    const secondAttempt = node.querySelector("[data-action='second-attempt']");
-    if (secondAttempt) {
-      secondAttempt.addEventListener("click", () => {
-        if (!canSubmitAgain()) {
-          state.stepId = "already";
-          render();
-          return;
-        }
-        if (!confirmSecondAttempt()) return;
-        clearDraft();
-        resetAnswers();
-        state.submissionId = newSubmissionId();
-        state.submittedOnce = false;
-        state.stepId = "welcome";
         render();
       });
     }
