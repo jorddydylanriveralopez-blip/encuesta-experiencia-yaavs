@@ -588,7 +588,7 @@
     const root = el(`
       <section class="card step">
         <span class="section-tag">Sección 1 · Recomendación</span>
-        <h2 class="question-title">En una escala de 0 a 10, ¿qué tan probable es que recomiendes YAAVS a otro negocio como el tuyo?</h2>
+        <h2 class="question-title">En una escala de 0 a 10, ¿qué tan probable es que recomiendes a YAAVS a otro negocio como el tuyo?</h2>
         <p class="question-help">0 — Nada probable · 10 — Totalmente probable</p>
         <div class="nps-grid">${buttons}</div>
         <div class="nps-labels"><span>0 — Nada probable</span><span>10 — Totalmente probable</span></div>
