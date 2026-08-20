@@ -1259,7 +1259,7 @@
         node = renderYesNo({
           section: "Sección 5 · Material de publicidad",
           title:
-            "En el último mes, ¿has recibido material de publicidad, promocionales o rotulación YAAVS para tu negocio?",
+            "En el último mes, ¿has recibido material publicitario para tu punto de venta?",
           key: "popUso",
         });
         break;
