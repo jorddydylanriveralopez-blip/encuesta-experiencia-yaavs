@@ -976,7 +976,10 @@
       <section class="card success step">
         <div class="success-icon">✓</div>
         <h2 class="question-title">¡Gracias por compartir tu experiencia!</h2>
-        <p class="lead">Tus respuestas ya quedaron registradas. En YAAVS las usamos para mejorar lo que más importa para tu negocio.</p>
+        <p class="lead">Tus respuestas ya quedaron registradas.</p>
+        <p class="lead" style="margin-top:0.75rem">
+          En YAAVS las usaremos para mejorar lo que más importa; <span class="accent">TU NEGOCIO</span>.
+        </p>
       </section>
     `);
   }
