@@ -12,16 +12,16 @@
     { key: "soporte", label: "Soporte recibido" },
     { key: "espera", label: "Tiempo de espera para ser atendido" },
     { key: "resolucion", label: "Resolución de dudas o problemas" },
-    { key: "amabilidad", label: "Amabilidad y empatía del agente" },
-    { key: "conocimiento", label: "Conocimiento y claridad del agente" },
+    { key: "amabilidad", label: "Amabilidad y empatía del ejecutivo de atención al cliente" },
+    { key: "conocimiento", label: "Conocimiento y claridad del ejecutivo de atención al cliente" },
     { key: "trato", label: "Trato recibido durante la interacción" },
   ];
 
   const MESA_MEJORAS = [
     "Tiempos de respuesta",
     "Resolución de dudas o problemas",
-    "Conocimiento y claridad del agente",
-    "Amabilidad y empatía",
+    "Conocimiento y claridad del ejecutivo de atención al cliente",
+    "Amabilidad y empatía del ejecutivo de atención al cliente",
     "Seguimiento de solicitudes",
     "Calidad general del servicio",
   ];
