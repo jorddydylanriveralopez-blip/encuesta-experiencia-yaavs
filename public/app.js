@@ -200,6 +200,13 @@
     Object.assign(state.answers, blankAnswers());
     state._lastError = null;
     state.submitting = false;
+    state.claveCheck = {
+      checking: false,
+      allowed: false,
+      alreadySubmitted: false,
+      message: "",
+      hint: "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
+    };
   }
 
   function clearDraft() {
@@ -300,6 +307,13 @@
     submissionId: newSubmissionId(),
     navDir: 1,
     answers: blankAnswers(),
+    claveCheck: {
+      checking: false,
+      allowed: false,
+      alreadySubmitted: false,
+      message: "",
+      hint: "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
+    },
   };
 
   function hasOtherDistribuidor() {
@@ -412,7 +426,12 @@
       case "welcome":
         return true;
       case "clave":
-        return isValidClave(a.clave);
+        return (
+          isValidClave(a.clave) &&
+          state.claveCheck.allowed &&
+          !state.claveCheck.alreadySubmitted &&
+          !state.claveCheck.checking
+        );
       case "nps":
         return typeof a.nps === "number";
       case "productosYaavs":
@@ -479,13 +498,29 @@
       try {
         const res = await fetch(`/api/clave-status?clave=${encodeURIComponent(clave)}`, { cache: "no-store" });
         const data = await res.json();
-        if (data && data.recentWarning) {
-          const ok = window.confirm(
-            "Ya hay una respuesta reciente con esta clave. Si es una corrección o una respuesta nueva legítima, puedes continuar."
-          );
-          if (!ok) return;
+        state.claveCheck = {
+          checking: false,
+          allowed: Boolean(data && data.allowed),
+          alreadySubmitted: Boolean(data && data.alreadySubmitted),
+          message: (data && data.message) || "",
+          hint:
+            (data && data.hint) ||
+            "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente.",
+        };
+        if (!state.claveCheck.allowed) {
+          showToast(state.claveCheck.message || "Clave no autorizada");
+          render();
+          return;
         }
-      } catch (_) {}
+        if (state.claveCheck.alreadySubmitted) {
+          showToast(state.claveCheck.message || "Esta clave ya contestó");
+          render();
+          return;
+        }
+      } catch (_) {
+        showToast("No se pudo validar la clave. Intenta de nuevo.");
+        return;
+      }
     }
     state.stepId = next.id;
     render();
@@ -558,13 +593,32 @@
   }
 
   function renderClave() {
+    const check = state.claveCheck || {};
+    const statusClass = check.alreadySubmitted || (check.message && !check.allowed)
+      ? "clave-status is-bad"
+      : check.allowed
+        ? "clave-status is-good"
+        : "clave-status";
     const root = el(`
       <section class="card step">
         <span class="section-tag">Identificación</span>
         <h2 class="question-title">¿Cuál es tu clave YAAVSER?</h2>
-        <p class="question-help">Escribe tu clave YAAVSER completa. Sin espacios. Se convertirá a mayúsculas. Ejemplo: 23CL04682</p>
-        <input class="field" id="clave" type="text" autocomplete="off" maxlength="25"
+        <p class="question-help">
+          Debe ser exacta, completa y sin espacios. No se aceptan claves inventadas ni incompletas.
+          Ejemplo de formato: 23CL04682
+        </p>
+        <input class="field" id="clave" type="text" autocomplete="off" maxlength="25" spellcheck="false"
           placeholder="Ej. 23CL04682" value="${escapeAttr(state.answers.clave)}" />
+        <p class="${statusClass}" id="claveStatus">${escapeHtml(
+          check.checking ? "Validando clave…" : check.message || ""
+        )}</p>
+        <p class="clave-hint">
+          <strong>¿No la tienes a la mano?</strong>
+          ${escapeHtml(
+            check.hint ||
+              "Entra a tu cuenta YAAVS (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa."
+          )}
+        </p>
         <input class="hp" name="website" id="website" tabindex="-1" autocomplete="off"
           style="position:absolute;left:-9999px;opacity:0;height:0;width:0" value="${escapeAttr(
             state.answers.website
@@ -573,15 +627,79 @@
       </section>
     `);
     const input = root.querySelector("#clave");
+    const statusEl = root.querySelector("#claveStatus");
+    let timer = null;
+
+    async function validateClave(clave) {
+      if (!isValidClave(clave)) {
+        state.claveCheck = {
+          checking: false,
+          allowed: false,
+          alreadySubmitted: false,
+          message: clave
+            ? "Escribe tu clave completa con el formato correcto (ej. 23CL04682)."
+            : "",
+          hint: state.claveCheck.hint,
+        };
+        statusEl.className = state.claveCheck.message ? "clave-status is-bad" : "clave-status";
+        statusEl.textContent = state.claveCheck.message;
+        refreshNext(root);
+        return;
+      }
+      state.claveCheck.checking = true;
+      statusEl.className = "clave-status";
+      statusEl.textContent = "Validando clave…";
+      refreshNext(root);
+      try {
+        const res = await fetch(`/api/clave-status?clave=${encodeURIComponent(clave)}`, { cache: "no-store" });
+        const data = await res.json();
+        if (normalizeClave(state.answers.clave) !== clave) return;
+        state.claveCheck = {
+          checking: false,
+          allowed: Boolean(data && data.allowed),
+          alreadySubmitted: Boolean(data && data.alreadySubmitted),
+          message: (data && data.message) || "",
+          hint:
+            (data && data.hint) ||
+            "Entra a tu cuenta YAAVS (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa.",
+        };
+        statusEl.className =
+          state.claveCheck.alreadySubmitted || !state.claveCheck.allowed
+            ? "clave-status is-bad"
+            : "clave-status is-good";
+        statusEl.textContent = state.claveCheck.message;
+        const hintEl = root.querySelector(".clave-hint");
+        if (hintEl) {
+          hintEl.innerHTML = `<strong>¿No la tienes a la mano?</strong> ${escapeHtml(state.claveCheck.hint)}`;
+        }
+      } catch (_) {
+        state.claveCheck.checking = false;
+        state.claveCheck.allowed = false;
+        state.claveCheck.message = "No se pudo validar la clave. Intenta de nuevo.";
+        statusEl.className = "clave-status is-bad";
+        statusEl.textContent = state.claveCheck.message;
+      }
+      refreshNext(root);
+      saveDraft();
+    }
+
     input.addEventListener("input", () => {
       state.answers.clave = normalizeClave(input.value);
       if (input.value !== state.answers.clave) input.value = state.answers.clave;
+      state.claveCheck.allowed = false;
+      state.claveCheck.alreadySubmitted = false;
+      state.claveCheck.checking = true;
       refreshNext(root);
+      clearTimeout(timer);
+      timer = setTimeout(() => validateClave(state.answers.clave), 350);
     });
     root.querySelector("#website").addEventListener("input", (e) => {
       state.answers.website = e.target.value;
     });
-    setTimeout(() => input.focus(), 50);
+    setTimeout(() => {
+      input.focus();
+      if (state.answers.clave) validateClave(state.answers.clave);
+    }, 50);
     return root;
   }
 

@@ -365,6 +365,37 @@ h2 {
   font-weight: 700;
 }
 
+.clave-status {
+  min-height: 1.25em;
+  margin: 10px 0 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--soft);
+}
+
+.clave-status.is-good {
+  color: var(--cyan-bright);
+}
+
+.clave-status.is-bad {
+  color: var(--bad);
+}
+
+.clave-hint {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(0, 173, 239, 0.1);
+  border: 1px solid rgba(0, 173, 239, 0.28);
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.clave-hint strong {
+  color: var(--cyan-bright);
+}
+
 .lead {
   margin: 0 auto 28px;
   max-width: 42ch;

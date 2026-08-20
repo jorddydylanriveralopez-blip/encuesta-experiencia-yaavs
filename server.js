@@ -3,6 +3,7 @@ const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
 const core = require("./lib/nps-core");
+const claveRegistry = require("./lib/clave-registry");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -360,7 +361,11 @@ function noCache(res) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, sheetsLive: Boolean(SHEETS_LIVE_URL) });
+  res.json({
+    ok: true,
+    sheetsLive: Boolean(SHEETS_LIVE_URL),
+    allowedClaves: claveRegistry.allowedCount(),
+  });
 });
 
 app.get("/api/auth/status", (req, res) => {
@@ -385,21 +390,60 @@ app.post("/api/auth/logout", (_req, res) => {
 
 app.get("/api/clave-status", async (req, res) => {
   const clave = core.normalizeClave(req.query.clave);
-  if (!core.isValidClave(clave)) {
-    return res.json({ ok: true, valid: false, recent: false });
+  const formatOk = core.isValidClave(clave);
+  const allowed = formatOk && claveRegistry.isAllowedClave(clave);
+  const hint =
+    "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.";
+
+  if (!formatOk) {
+    return res.json({
+      ok: true,
+      valid: false,
+      allowed: false,
+      alreadySubmitted: false,
+      recent: false,
+      recentWarning: false,
+      hint,
+      message: "Escribe tu clave completa con el formato correcto (ej. 23CL04682).",
+    });
   }
+
+  if (!allowed) {
+    return res.json({
+      ok: true,
+      valid: true,
+      allowed: false,
+      alreadySubmitted: false,
+      recent: false,
+      recentWarning: false,
+      hint,
+      message:
+        "No encontramos esa clave en el padrón YAAVSER. Debe coincidir exactamente. Si no la tienes a la mano, ábrela desde tu cuenta YAAVS.",
+    });
+  }
+
   const { list } = await loadCatalog();
-  const recent = list
+  const matches = list
     .filter((r) => core.normalizeClave(r.clave) === clave)
-    .sort((a, b) => Date.parse(b.receivedAt || b.timestamp || 0) - Date.parse(a.receivedAt || a.timestamp || 0))[0];
+    .sort((a, b) => Date.parse(b.receivedAt || b.timestamp || 0) - Date.parse(a.receivedAt || a.timestamp || 0));
+  const recent = matches[0];
+  const alreadySubmitted = matches.length > 0;
   const recentMs = recent ? Date.parse(recent.receivedAt || recent.timestamp || 0) : 0;
   const isRecent = Number.isFinite(recentMs) && Date.now() - recentMs < 1000 * 60 * 60 * 24 * 14;
+
   res.json({
     ok: true,
     valid: true,
-    recent: Boolean(recent),
-    recentWarning: isRecent,
+    allowed: true,
+    alreadySubmitted,
+    recent: alreadySubmitted,
+    recentWarning: alreadySubmitted,
     lastAt: recent ? recent.receivedAt || recent.timestamp : null,
+    hint,
+    message: alreadySubmitted
+      ? "Esta clave ya contestó la encuesta y no se puede volver a enviar."
+      : "Clave válida. Puedes continuar.",
+    allowlistCount: claveRegistry.allowedCount(),
   });
 });
 
@@ -445,7 +489,15 @@ app.post("/api/responses", async (req, res) => {
     }
     const entry = normalizeResponse({ ...body, submissionId, id: body.id || core.newId("r") });
     if (!core.isValidClave(entry.clave)) {
-      return res.status(400).json({ ok: false, error: "Clave YAAVSER inválida" });
+      return res.status(400).json({ ok: false, error: "Clave YAAVSER inválida", code: "invalid_clave" });
+    }
+    if (!claveRegistry.isAllowedClave(entry.clave)) {
+      return res.status(403).json({
+        ok: false,
+        error:
+          "Esa clave no está autorizada para contestar. Debe coincidir exactamente con tu clave YAAVSER. Consúltala en tu cuenta YAAVS.",
+        code: "clave_not_allowed",
+      });
     }
     if (entry.isTest || /PRUEBA-CODEX-20260819/i.test(JSON.stringify(entry))) {
       return res.status(201).json({ ok: true, id: entry.id, ignored: "test" });
@@ -459,6 +511,18 @@ app.post("/api/responses", async (req, res) => {
     if (already) {
       return res.status(200).json({ ok: true, id: already.id, duplicate: true });
     }
+
+    // Una sola respuesta por clave (local + catálogo remoto)
+    const { list: catalog } = await loadCatalog();
+    const claveTaken = catalog.some((r) => core.normalizeClave(r.clave) === entry.clave);
+    if (claveTaken) {
+      return res.status(409).json({
+        ok: false,
+        error: "Esta clave ya contestó la encuesta y no se puede volver a enviar.",
+        code: "clave_already_submitted",
+      });
+    }
+
     const sameBurst = list.find((r) => {
       if (core.normalizeClave(r.clave) !== entry.clave) return false;
       const dt = Math.abs(Date.parse(r.receivedAt || r.timestamp || 0) - Date.now());
