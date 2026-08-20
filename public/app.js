@@ -67,7 +67,7 @@
     "Portabilidades",
     "eSIM",
     "Liberaciones",
-    "Internet inalámbrico",
+    "Internet inalámbrico (MiFi Bait)",
     "Tiempo aire",
     "Planes de renta",
   ];
@@ -235,7 +235,8 @@
 
   function migrateProductos(list) {
     const map = {
-      "Internet inalámbrico (MIFI Bait)": "Internet inalámbrico",
+      "Internet inalámbrico": "Internet inalámbrico (MiFi Bait)",
+      "Internet inalámbrico (MIFI Bait)": "Internet inalámbrico (MiFi Bait)",
       "Planes de renta BAIT POSPAGO": "Planes de renta",
     };
     const allowed = new Set(PRODUCTOS_YAAVS);
