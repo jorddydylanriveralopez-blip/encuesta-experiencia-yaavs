@@ -9,20 +9,12 @@
   const toast = document.getElementById("toast");
 
   const MATRIX_ROWS = [
-    { key: "contacto", label: "Facilidad para contactar" },
-    { key: "tiempo", label: "Tiempo de respuesta" },
-    { key: "primerContacto", label: "Resolución en el primer contacto" },
-    { key: "atencion", label: "Atención y claridad del agente" },
-  ];
-
-  const MOTIVO_RAZONES = [
-    "Atención del ejecutivo",
-    "Mesa de Control",
-    "RecargaKlic / activación de chips",
-    "Material POP",
-    "Ganancias, comisiones o incentivos",
-    "Productos y surtido",
-    "Otro",
+    { key: "soporte", label: "Soporte recibido" },
+    { key: "espera", label: "Tiempo de espera para ser atendido" },
+    { key: "resolucion", label: "Resolución de dudas o problemas" },
+    { key: "amabilidad", label: "Amabilidad y empatía del agente" },
+    { key: "conocimiento", label: "Conocimiento y claridad del agente" },
+    { key: "trato", label: "Trato recibido durante la interacción" },
   ];
 
   const MESA_MEJORAS = [
@@ -74,9 +66,9 @@
     "Portabilidades",
     "eSIM",
     "Liberaciones",
-    "Internet inalámbrico (MIFI Bait)",
+    "Internet inalámbrico",
     "Tiempo aire",
-    "Planes de renta BAIT POSPAGO",
+    "Planes de renta",
   ];
 
   const SCALE_5 = [
@@ -96,15 +88,16 @@
   ];
 
   const SCALE_GANANCIAS = [
-    { value: 1, label: "Nada atractiva" },
-    { value: 2, label: "Poco atractiva" },
-    { value: 3, label: "Regular" },
-    { value: 4, label: "Atractiva" },
-    { value: 5, label: "Muy atractiva" },
+    { value: 1, label: "Muy bajas" },
+    { value: 2, label: "Bajas" },
+    { value: 3, label: "Aceptables" },
+    { value: 4, label: "Buenas" },
+    { value: 5, label: "Excelentes" },
   ];
 
   const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
   const SUBMIT_LOCK_LEGACY = "yaavs_nps_submitted_v1";
+  const DRAFT_KEY = "yaavs_nps_draft_v3";
   const MAX_SUBMISSIONS = 99;
 
   function readCookie(name) {
@@ -164,8 +157,6 @@
     return {
       clave: "",
       nps: null,
-      motivo: null,
-      motivoOtro: "",
       productosYaavs: [],
       visitaEjecutivo: null,
       ejecutivo: null,
@@ -209,6 +200,93 @@
     state.submitting = false;
   }
 
+  function clearDraft() {
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (_) {}
+  }
+
+  function saveDraft() {
+    if (state.submittedOnce || state.submitting) return;
+    if (state.stepId === "done" || state.stepId === "already") return;
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          v: 3,
+          stepId: state.stepId,
+          submissionId: state.submissionId,
+          answers: state.answers,
+          savedAt: Date.now(),
+        })
+      );
+    } catch (_) {}
+  }
+
+  function migrateProductos(list) {
+    const map = {
+      "Internet inalámbrico (MIFI Bait)": "Internet inalámbrico",
+      "Planes de renta BAIT POSPAGO": "Planes de renta",
+    };
+    const allowed = new Set(PRODUCTOS_YAAVS);
+    return (Array.isArray(list) ? list : [])
+      .map((p) => map[p] || p)
+      .filter((p) => allowed.has(p));
+  }
+
+  function migrateMatrix(raw) {
+    const legacy = {
+      contacto: "soporte",
+      tiempo: "espera",
+      primerContacto: "resolucion",
+      atencion: "conocimiento",
+    };
+    const out = {};
+    const src = raw && typeof raw === "object" ? raw : {};
+    Object.keys(src).forEach((k) => {
+      const key = legacy[k] || k;
+      const v = Number(src[k]);
+      if (Number.isFinite(v)) out[key] = v;
+    });
+    return out;
+  }
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      if (!data || !data.answers || typeof data.answers !== "object") return null;
+      if (data.savedAt && Date.now() - Number(data.savedAt) > 1000 * 60 * 60 * 24 * 30) {
+        clearDraft();
+        return null;
+      }
+      return data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function restoreDraftIfAny() {
+    if (hasReachedLimit()) return false;
+    const draft = loadDraft();
+    if (!draft) return false;
+    const merged = { ...blankAnswers(), ...draft.answers };
+    merged.productosYaavs = migrateProductos(merged.productosYaavs);
+    merged.mesaMatrix = migrateMatrix(merged.mesaMatrix);
+    merged.mesaMejoras = Array.isArray(merged.mesaMejoras) ? merged.mesaMejoras : [];
+    Object.assign(state.answers, merged);
+    if (draft.submissionId) state.submissionId = String(draft.submissionId);
+    const steps = getVisibleSteps();
+    const ids = new Set(steps.map((s) => s.id));
+    let stepId = draft.stepId || "welcome";
+    if (!ids.has(stepId) || stepId === "done" || stepId === "already") {
+      stepId = "welcome";
+    }
+    state.stepId = stepId;
+    return stepId !== "welcome";
+  }
+
   function confirmSecondAttempt() {
     return window.confirm(
       "¿Seguro que quieres contestar el cuestionario una segunda vez?\n\nSolo puedes hacerlo 2 veces. Úsalo si te equivocaste en la primera respuesta."
@@ -246,7 +324,6 @@
       { id: "welcome", kind: "welcome" },
       { id: "clave", kind: "clave", section: "Identificación" },
       { id: "nps", kind: "nps", section: "Recomendación y experiencia" },
-      { id: "motivo", kind: "choice", section: "Recomendación y experiencia" },
       { id: "productosYaavs", kind: "productos", section: "Productos" },
       { id: "visitaEjecutivo", kind: "choice", section: "Ejecutivo comercial" },
       { id: "ejecutivo", kind: "scale", section: "Ejecutivo comercial" },
@@ -338,9 +415,6 @@
         return isValidClave(a.clave);
       case "nps":
         return typeof a.nps === "number";
-      case "motivo":
-        if (a.motivo === "Otro") return a.motivoOtro.trim().length > 0 && a.motivoOtro.length <= 300;
-        return !!a.motivo;
       case "productosYaavs":
         return a.productosYaavs.length >= 1;
       case "visitaEjecutivo":
@@ -479,7 +553,7 @@
       <section class="card step">
         <span class="section-tag">Identificación</span>
         <h2 class="question-title">¿Cuál es tu clave YAAVSER?</h2>
-        <p class="question-help">Sin espacios. Se convertirá a mayúsculas. Ejemplo: 23CL04682</p>
+        <p class="question-help">Escribe tu clave YAAVSER completa. Sin espacios. Se convertirá a mayúsculas. Ejemplo: 23CL04682</p>
         <input class="field" id="clave" type="text" autocomplete="off" maxlength="25"
           placeholder="Ej. 23CL04682" value="${escapeAttr(state.answers.clave)}" />
         <input class="hp" name="website" id="website" tabindex="-1" autocomplete="off"
@@ -533,38 +607,6 @@
     return root;
   }
 
-  function renderMotivo() {
-    const extra =
-      state.answers.motivo === "Otro"
-        ? `<textarea class="field" id="motivoOtro" maxlength="300" placeholder="Cuéntanos la razón…">${escapeHtml(
-            state.answers.motivoOtro
-          )}</textarea>
-        <div class="char-count"><span id="motivoOtroCount">${state.answers.motivoOtro.length}</span>/300</div>`
-        : "";
-    const root = el(`
-      <section class="card step">
-        <span class="section-tag">Sección 1 · Motivo</span>
-        <h2 class="question-title">¿Cuál es la principal razón de tu calificación?</h2>
-        <p class="question-help">Obligatoria para promotores, pasivos y detractores.</p>
-        ${renderChoiceOptionsHtml("motivo", MOTIVO_RAZONES)}
-        ${extra}
-        ${actionsHtml()}
-      </section>
-    `);
-    bindChoice(root, "motivo", () => render());
-    const ta = root.querySelector("#motivoOtro");
-    if (ta) {
-      ta.addEventListener("input", () => {
-        state.answers.motivoOtro = ta.value;
-        const count = root.querySelector("#motivoOtroCount");
-        if (count) count.textContent = String(ta.value.length);
-        refreshNext(root);
-      });
-      setTimeout(() => ta.focus(), 50);
-    }
-    return root;
-  }
-
   function renderChoiceOptionsHtml(key, options) {
     return `<div class="choices">${options
       .map((o) => {
@@ -580,7 +622,6 @@
     root.querySelectorAll("[data-val]").forEach((btn) => {
       btn.addEventListener("click", () => {
         state.answers[key] = btn.dataset.val;
-        if (key === "motivo" && btn.dataset.val !== "Otro") state.answers.motivoOtro = "";
         if (onChange) onChange();
         else {
           root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
@@ -945,7 +986,6 @@
     const mesaNeeds = mesaSi && mesaNeedsImprove();
     const recargaNeeds = recargaSi && typeof a.recargaExp === "number" && a.recargaExp <= 3;
     const popNeeds = popSi && typeof a.popSat === "number" && a.popSat <= 3;
-    const motivo = a.motivo === "Otro" ? `Otro: ${a.motivoOtro.trim()}` : a.motivo;
 
     return {
       timestamp: new Date().toISOString(),
@@ -953,16 +993,16 @@
       id: state.submissionId,
       clave: normalizeClave(a.clave),
       nps: a.nps,
-      motivo: visibleValue(motivo),
-      motivoOtro: a.motivo === "Otro" ? a.motivoOtro.trim() : "No aplica",
       productosYaavs: visibleValue(a.productosYaavs),
       visitaEjecutivo: visibleValue(a.visitaEjecutivo),
       ejecutivo: visibleValue(a.ejecutivo),
       mesaUso: visibleValue(a.mesaUso),
-      mesa_contacto: visibleValue(a.mesaMatrix.contacto, { shown: mesaSi }),
-      mesa_tiempo: visibleValue(a.mesaMatrix.tiempo, { shown: mesaSi }),
-      mesa_primerContacto: visibleValue(a.mesaMatrix.primerContacto, { shown: mesaSi }),
-      mesa_atencion: visibleValue(a.mesaMatrix.atencion, { shown: mesaSi }),
+      mesa_soporte: visibleValue(a.mesaMatrix.soporte, { shown: mesaSi }),
+      mesa_espera: visibleValue(a.mesaMatrix.espera, { shown: mesaSi }),
+      mesa_resolucion: visibleValue(a.mesaMatrix.resolucion, { shown: mesaSi }),
+      mesa_amabilidad: visibleValue(a.mesaMatrix.amabilidad, { shown: mesaSi }),
+      mesa_conocimiento: visibleValue(a.mesaMatrix.conocimiento, { shown: mesaSi }),
+      mesa_trato: visibleValue(a.mesaMatrix.trato, { shown: mesaSi }),
       mesaMejoras: visibleValue(a.mesaMejoras, { shown: mesaNeeds }),
       recargaMetodo: visibleValue(a.recargaMetodo),
       recargaUso: visibleValue(a.recargaUso),
@@ -984,16 +1024,16 @@
     return [
       `Clave: ${payload.clave}`,
       `NPS: ${payload.nps}`,
-      `Motivo: ${payload.motivo}`,
-      `Motivo otro: ${payload.motivoOtro}`,
       `Productos YAAVS: ${payload.productosYaavs}`,
       `Visita ejecutivo: ${payload.visitaEjecutivo}`,
       `Ejecutivo: ${payload.ejecutivo}`,
       `Mesa uso: ${payload.mesaUso}`,
-      `Mesa contacto: ${payload.mesa_contacto}`,
-      `Mesa tiempo: ${payload.mesa_tiempo}`,
-      `Mesa primer contacto: ${payload.mesa_primerContacto}`,
-      `Mesa atención: ${payload.mesa_atencion}`,
+      `Mesa soporte: ${payload.mesa_soporte}`,
+      `Mesa espera: ${payload.mesa_espera}`,
+      `Mesa resolución: ${payload.mesa_resolucion}`,
+      `Mesa amabilidad: ${payload.mesa_amabilidad}`,
+      `Mesa conocimiento: ${payload.mesa_conocimiento}`,
+      `Mesa trato: ${payload.mesa_trato}`,
       `Mesa mejoras: ${payload.mesaMejoras}`,
       `Método recarga: ${payload.recargaMetodo}`,
       `RecargaKlic uso: ${payload.recargaUso}`,
@@ -1082,6 +1122,7 @@
         sessionStorage.setItem(sentKey, "1");
       } catch (_) {}
       markSubmitted();
+      clearDraft();
       state.submittedOnce = true;
       state.submitting = false;
       state.stepId = "done";
@@ -1112,9 +1153,6 @@
         break;
       case "nps":
         node = renderNps();
-        break;
-      case "motivo":
-        node = renderMotivo();
         break;
       case "productosYaavs":
         node = renderProductChecks();
@@ -1207,8 +1245,7 @@
       case "rentabilidad":
         node = renderScale({
           section: "Sección 6 · Ganancias y fidelización",
-          title:
-            "Considerando comisiones, incentivos y esfuerzo de venta, ¿qué tan atractiva es la rentabilidad que obtienes con YAAVS?",
+          title: "En general, ¿cómo calificas las ganancias que obtienes al trabajar con YAAVS?",
           key: "rentabilidad",
           options: SCALE_GANANCIAS,
         });
@@ -1232,6 +1269,7 @@
     app.replaceChildren(node);
     if (state.navDir < 0) node.classList.add("is-back");
     bindCommon(node);
+    saveDraft();
 
     const retry = node.querySelector("[data-action='retry']");
     if (retry) {
@@ -1258,6 +1296,7 @@
           return;
         }
         if (!confirmSecondAttempt()) return;
+        clearDraft();
         resetAnswers();
         state.submissionId = newSubmissionId();
         state.submittedOnce = false;
@@ -1289,5 +1328,9 @@
     else go(1);
   });
 
+  const resumed = restoreDraftIfAny();
   render();
+  if (resumed) {
+    showToast("Continuamos donde lo dejaste");
+  }
 })();

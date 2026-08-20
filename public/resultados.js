@@ -41,15 +41,16 @@
   const LABELS = [
     ["claveMasked", "Clave YAAVSER"],
     ["nps", "Calificación NPS (0–10)"],
-    ["motivo", "Principal razón de la calificación"],
     ["productosYaavs", "Productos y servicios YAAVS"],
     ["visitaEjecutivo", "Frecuencia de visita del ejecutivo"],
     ["ejecutivo", "Calificación del ejecutivo"],
     ["mesaUso", "¿Usó Mesa de Control?"],
-    ["mesa_contacto", "Mesa · Facilidad para contactar"],
-    ["mesa_tiempo", "Mesa · Tiempo de respuesta"],
-    ["mesa_primerContacto", "Mesa · Resolución en el primer contacto"],
-    ["mesa_atencion", "Mesa · Atención y claridad"],
+    ["mesa_soporte", "Mesa · Soporte recibido"],
+    ["mesa_espera", "Mesa · Tiempo de espera"],
+    ["mesa_resolucion", "Mesa · Resolución de dudas o problemas"],
+    ["mesa_amabilidad", "Mesa · Amabilidad y empatía"],
+    ["mesa_conocimiento", "Mesa · Conocimiento y claridad"],
+    ["mesa_trato", "Mesa · Trato recibido"],
     ["mesaMejoras", "Mejoras Mesa de Control"],
     ["recargaMetodo", "Medio de activación de chips"],
     ["recargaUso", "¿Usó RecargaKlic?"],
@@ -58,7 +59,7 @@
     ["popUso", "¿Recibió material POP?"],
     ["popSat", "Satisfacción POP"],
     ["popMejora", "Mejora POP"],
-    ["rentabilidad", "Atractivo de la rentabilidad"],
+    ["rentabilidad", "Ganancias con YAAVS"],
     ["distribuidores", "Otro distribuidor de chips"],
     ["competencia", "Qué ofrece la competencia"],
     ["mejoraGeneral", "Mejora general"],
@@ -66,13 +67,15 @@
 
   const ATTRS = [
     ["ejecutivo", "Ejecutivo"],
-    ["mesa_contacto", "Facilidad de contacto"],
-    ["mesa_tiempo", "Tiempo de respuesta"],
-    ["mesa_primerContacto", "Resolución 1er contacto"],
-    ["mesa_atencion", "Atención y claridad"],
+    ["mesa_soporte", "Soporte"],
+    ["mesa_espera", "Tiempo de espera"],
+    ["mesa_resolucion", "Resolución"],
+    ["mesa_amabilidad", "Amabilidad"],
+    ["mesa_conocimiento", "Conocimiento"],
+    ["mesa_trato", "Trato"],
     ["recargaExp", "RecargaKlic"],
     ["popSat", "POP"],
-    ["rentabilidad", "Rentabilidad"],
+    ["rentabilidad", "Ganancias"],
   ];
 
   const RECARGA_METODO_LABELS = [
@@ -176,7 +179,7 @@
   }
 
   function fingerprint(r) {
-    return [String(r.clave || "").toUpperCase(), r.nps, r.motivo, r.productosYaavs].join("|").toLowerCase();
+    return [String(r.clave || "").toUpperCase(), r.nps, r.productosYaavs].join("|").toLowerCase();
   }
 
   function decorate(list) {
@@ -425,7 +428,7 @@
       if (from && (Number.isNaN(ts.getTime()) || ts < from)) return false;
       if (to && (Number.isNaN(ts.getTime()) || ts > to)) return false;
       if (!q) return true;
-      return [r.motivo, r.productosYaavs, r.recargaMetodo, r.nps].join(" ").toLowerCase().includes(q);
+      return [r.productosYaavs, r.recargaMetodo, r.nps, r.mejoraGeneral].join(" ").toLowerCase().includes(q);
     });
   }
 
@@ -514,17 +517,20 @@
       const fmt = (v) => (v == null ? "—" : v.toFixed(1));
       return `<tr><th>${esc(label)}</th><td>${fmt(all)}</td><td>${fmt(p)}</td><td>${fmt(a)}</td><td>${fmt(d)}</td></tr>`;
     }).join("");
-    const mot = (arr) => topCounts(arr.map((r) => r.motivo)).map(([k, n]) => `${k} (${n})`).join(" · ") || "Sin datos";
+    const topProd = (arr) =>
+      topCounts(arr.flatMap((r) => String(r.productosYaavs || "").split(/\s*\|\s*/).map((s) => s.trim()).filter(Boolean)))
+        .map(([k, n]) => `${k} (${n})`)
+        .join(" · ") || "Sin datos";
     const tops = topics(list).map(([k, n]) => `${k} (${n})`).join(" · ") || "Sin comentarios suficientes";
     analysisGrid.innerHTML = `
       <article class="chart-card"><h3>Promedio por atributo</h3>
         <div class="table-wrap"><table class="mini-table"><thead><tr><th>Atributo</th><th>Todos</th><th>Prom.</th><th>Pasivos</th><th>Detr.</th></tr></thead><tbody>${attrRows}</tbody></table></div>
       </article>
-      <article class="chart-card"><h3>Motivos principales</h3>
-        <p><strong>Promotores:</strong> ${esc(mot(bySeg.promoter))}</p>
-        <p><strong>Pasivos:</strong> ${esc(mot(bySeg.passive))}</p>
-        <p><strong>Detractores:</strong> ${esc(mot(bySeg.detractor))}</p>
-        <p class="chart-sub">Temas más mencionados: ${esc(tops)}</p>
+      <article class="chart-card"><h3>Productos más mencionados</h3>
+        <p><strong>Promotores:</strong> ${esc(topProd(bySeg.promoter))}</p>
+        <p><strong>Pasivos:</strong> ${esc(topProd(bySeg.passive))}</p>
+        <p><strong>Detractores:</strong> ${esc(topProd(bySeg.detractor))}</p>
+        <p class="chart-sub">Temas en comentarios: ${esc(tops)}</p>
       </article>
     `;
   }
@@ -630,7 +636,7 @@
             </div>
             <div class="card-body">
               <h3 class="card-title">${esc(r.claveMasked)}</h3>
-              <p class="card-meta">${esc(String(r.motivo || "Sin motivo").slice(0, 70))}</p>
+              <p class="card-meta">${esc(String(r.productosYaavs || "Sin productos").slice(0, 70))}</p>
               <p class="card-meta">${badges}</p>
               <p class="card-date">${esc(shortDate(r.receivedAt || r.timestamp))}</p>
               <div class="card-actions">
