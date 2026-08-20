@@ -458,7 +458,7 @@
     return el(`
       <section class="card welcome step">
         <div class="kicker"><span class="kicker-dot"></span> Encuesta de experiencia</div>
-        <h1>En YAAVS queremos seguir ayudándote a hacer crecer tu negocio</h1>
+        <h1>En YAAVS queremos seguir ayudándote a hacer crecer tu <span class="accent">negocio</span></h1>
         <p class="lead">
           Responder esta encuesta te tomará menos de 3 minutos. Tu opinión nos permitirá mejorar
           la atención, nuestras herramientas y los beneficios que te ofrecemos.
