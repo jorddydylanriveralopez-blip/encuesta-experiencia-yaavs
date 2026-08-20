@@ -1262,7 +1262,7 @@
       case "popMejora":
         node = renderChoice({
           section: "Sección 5 · Material de publicidad",
-          title: "¿Qué aspecto del material de publicidad deberíamos mejorar principalmente?",
+          title: "¿Qué aspecto del material publicitario deberíamos mejorar principalmente?",
           key: "popMejora",
           options: POP_MEJORAS,
           otroKey: "popMejoraOtro",
