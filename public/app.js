@@ -58,7 +58,6 @@
     "Una vez por semana",
     "Una vez cada 15 días",
     "Una vez al mes",
-    "Con menor frecuencia",
     "No he recibido visitas de mi ejecutivo",
   ];
 
@@ -326,8 +325,8 @@
       { id: "clave", kind: "clave", section: "Identificación" },
       { id: "nps", kind: "nps", section: "Recomendación y experiencia" },
       { id: "productosYaavs", kind: "productos", section: "Productos" },
-      { id: "visitaEjecutivo", kind: "choice", section: "Ejecutivo comercial" },
-      { id: "ejecutivo", kind: "scale", section: "Ejecutivo comercial" },
+      { id: "visitaEjecutivo", kind: "choice", section: "Ejecutivo de ventas" },
+      { id: "ejecutivo", kind: "scale", section: "Ejecutivo de ventas" },
       { id: "mesaUso", kind: "yesno", section: "Mesa de Control" },
     ];
 
@@ -1160,7 +1159,7 @@
         break;
       case "visitaEjecutivo":
         node = renderChoice({
-          section: "Sección 2 · Ejecutivo comercial",
+          section: "Sección 2 · Ejecutivo de ventas",
           title: "¿Con qué frecuencia te visita tu ejecutivo de ventas?",
           key: "visitaEjecutivo",
           options: VISITA_EJECUTIVO,
@@ -1168,8 +1167,8 @@
         break;
       case "ejecutivo":
         node = renderScale({
-          section: "Sección 2 · Ejecutivo comercial",
-          title: "¿Cómo calificarías la atención que recibes de tu ejecutivo comercial?",
+          section: "Sección 2 · Ejecutivo de ventas",
+          title: "¿Cómo calificarías la atención que recibes de tu ejecutivo de ventas?",
           key: "ejecutivo",
           options: SCALE_5,
         });
