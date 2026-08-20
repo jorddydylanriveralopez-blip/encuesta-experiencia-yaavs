@@ -167,9 +167,11 @@
       recargaUso: null,
       recargaExp: null,
       recargaMejora: null,
+      recargaMejoraOtro: "",
       popUso: null,
       popSat: null,
       popMejora: null,
+      popMejoraOtro: "",
       rentabilidad: null,
       distribuidores: "",
       competencia: "",
@@ -434,12 +436,14 @@
       case "recargaExp":
         return typeof a.recargaExp === "number";
       case "recargaMejora":
+        if (a.recargaMejora === "Otro") return a.recargaMejoraOtro.trim().length > 0;
         return !!a.recargaMejora;
       case "popUso":
         return a.popUso === "Sí" || a.popUso === "No";
       case "popSat":
         return typeof a.popSat === "number";
       case "popMejora":
+        if (a.popMejora === "Otro") return a.popMejoraOtro.trim().length > 0;
         return !!a.popMejora;
       case "rentabilidad":
         return typeof a.rentabilidad === "number";
@@ -782,7 +786,8 @@
     return root;
   }
 
-  function renderChoice({ section, title, help, key, options }) {
+  function renderChoice({ section, title, help, key, options, otroKey }) {
+    const isOtro = state.answers[key] === "Otro";
     const opts = options
       .map((o) => {
         const selected = state.answers[key] === o ? "is-selected" : "";
@@ -792,25 +797,50 @@
       })
       .join("");
 
+    const otroBox =
+      otroKey && isOtro
+        ? `<textarea class="field" id="otroField" rows="5" placeholder="Cuéntanos con detalle tu razón…">${escapeHtml(
+            state.answers[otroKey] || ""
+          )}</textarea>
+        <p class="question-help" style="margin-top:8px">Puedes escribir con la extensión que necesites.</p>`
+        : "";
+
     const root = el(`
       <section class="card step">
         <span class="section-tag">${escapeHtml(section)}</span>
         <h2 class="question-title">${escapeHtml(title)}</h2>
         ${help ? `<p class="question-help">${escapeHtml(help)}</p>` : ""}
         <div class="choices">${opts}</div>
+        ${otroBox}
         ${actionsHtml()}
       </section>
     `);
 
     root.querySelectorAll("[data-val]").forEach((btn) => {
       btn.addEventListener("click", () => {
-        state.answers[key] = btn.dataset.val;
+        const val = btn.dataset.val;
+        state.answers[key] = val;
+        if (otroKey && val !== "Otro") state.answers[otroKey] = "";
+        if (otroKey && (val === "Otro" || isOtro)) {
+          render();
+          return;
+        }
         root.querySelectorAll("[data-val]").forEach((b) => b.classList.remove("is-selected"));
         btn.classList.add("is-selected");
         pulseSelected(btn);
         refreshNext(root);
       });
     });
+
+    const ta = root.querySelector("#otroField");
+    if (ta && otroKey) {
+      ta.addEventListener("input", () => {
+        state.answers[otroKey] = ta.value;
+        refreshNext(root);
+        saveDraft();
+      });
+      setTimeout(() => ta.focus(), 50);
+    }
     return root;
   }
 
@@ -1007,10 +1037,16 @@
       recargaMetodo: visibleValue(a.recargaMetodo),
       recargaUso: visibleValue(a.recargaUso),
       recargaExp: visibleValue(a.recargaExp, { shown: recargaSi }),
-      recargaMejora: visibleValue(a.recargaMejora, { shown: recargaNeeds }),
+      recargaMejora: visibleValue(
+        a.recargaMejora === "Otro" ? `Otro: ${a.recargaMejoraOtro.trim()}` : a.recargaMejora,
+        { shown: recargaNeeds }
+      ),
       popUso: visibleValue(a.popUso),
       popSat: visibleValue(a.popSat, { shown: popSi }),
-      popMejora: visibleValue(a.popMejora, { shown: popNeeds }),
+      popMejora: visibleValue(
+        a.popMejora === "Otro" ? `Otro: ${a.popMejoraOtro.trim()}` : a.popMejora,
+        { shown: popNeeds }
+      ),
       rentabilidad: visibleValue(a.rentabilidad),
       distribuidores: visibleValue(a.distribuidores),
       competencia: visibleValue(a.competencia, { shown: otherDist }),
@@ -1216,6 +1252,7 @@
           title: "¿Qué aspecto de RecargaKlic deberíamos mejorar principalmente?",
           key: "recargaMejora",
           options: RECARGA_MEJORAS,
+          otroKey: "recargaMejoraOtro",
         });
         break;
       case "popUso":
@@ -1240,6 +1277,7 @@
           title: "¿Qué aspecto del material de publicidad deberíamos mejorar principalmente?",
           key: "popMejora",
           options: POP_MEJORAS,
+          otroKey: "popMejoraOtro",
         });
         break;
       case "rentabilidad":
