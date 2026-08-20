@@ -193,7 +193,7 @@ body {
   z-index: 20;
   display: grid;
   gap: 12px;
-  padding: 16px 20px 12px;
+  padding: 20px 20px 14px;
   backdrop-filter: blur(16px);
   background: linear-gradient(180deg, rgba(0, 20, 72, 0.92), rgba(0, 20, 72, 0.35));
   border-bottom: 1px solid rgba(0, 173, 239, 0.22);
@@ -205,7 +205,7 @@ body {
 }
 
 .brand-logo {
-  height: 44px;
+  height: 64px;
   width: auto;
   object-fit: contain;
   display: block;
