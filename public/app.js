@@ -457,6 +457,13 @@
   }
 
   async function go(delta) {
+    if (state.submitting || state.submittedOnce) return;
+    if (state.stepId === "done" || state.stepId === "already") return;
+    if (hasReachedLimit() || window.__YAAVS_NPS_LOCKED__) {
+      state.stepId = "already";
+      render();
+      return;
+    }
     const steps = getVisibleSteps();
     const i = currentIndex();
     const next = steps[i + delta];
@@ -1161,6 +1168,12 @@
   }
 
   function render() {
+    if (state.submittedOnce) {
+      state.stepId = "done";
+    } else if (hasReachedLimit() || window.__YAAVS_NPS_LOCKED__) {
+      state.stepId = "already";
+    }
+
     updateProgress();
     const id = state.stepId;
     let node;
@@ -1331,15 +1344,28 @@
     if (e.key !== "Enter" || e.shiftKey) return;
     const tag = (e.target && e.target.tagName) || "";
     if (tag === "TEXTAREA") return;
-    if (state.stepId === "done") return;
+    if (
+      state.submitting ||
+      state.submittedOnce ||
+      state.stepId === "done" ||
+      state.stepId === "already" ||
+      hasReachedLimit() ||
+      window.__YAAVS_NPS_LOCKED__
+    ) {
+      e.preventDefault();
+      return;
+    }
     e.preventDefault();
     if (state.stepId === "mejoraGeneral") submitForm();
     else go(1);
   });
 
-  const resumed = restoreDraftIfAny();
-  render();
-  if (resumed) {
-    showToast("Continuamos donde lo dejaste");
+  if (hasReachedLimit() || window.__YAAVS_NPS_LOCKED__) {
+    state.stepId = "already";
+    render();
+  } else {
+    const resumed = restoreDraftIfAny();
+    render();
+    if (resumed) showToast("Continuamos donde lo dejaste");
   }
 })();
