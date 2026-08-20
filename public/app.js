@@ -1176,7 +1176,7 @@
       case "mesaUso":
         node = renderYesNo({
           section: "Sección 3 · Mesa de Control",
-          title: "En los últimos 6 meses, ¿has solicitado apoyo a nuestra Mesa de Control?",
+          title: "En el último mes, ¿has solicitado apoyo a nuestra Mesa de Control?",
           key: "mesaUso",
         });
         break;
@@ -1198,7 +1198,7 @@
       case "recargaUso":
         node = renderYesNo({
           section: "Sección 4 · App RecargaKlic",
-          title: "En los últimos 6 meses, ¿has utilizado la app RecargaKlic?",
+          title: "En el último mes, ¿has utilizado la app RecargaKlic?",
           key: "recargaUso",
         });
         break;
@@ -1222,7 +1222,7 @@
         node = renderYesNo({
           section: "Sección 5 · Material POP",
           title:
-            "En los últimos 6 meses, ¿has recibido material POP, promocionales o rotulación YAAVS para tu negocio?",
+            "En el último mes, ¿has recibido material POP, promocionales o rotulación YAAVS para tu negocio?",
           key: "popUso",
         });
         break;
