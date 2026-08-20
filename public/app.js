@@ -576,18 +576,12 @@
   function renderWelcome() {
     return el(`
       <section class="card welcome step">
-        <div class="kicker"><span class="kicker-dot"></span> Encuesta de experiencia</div>
         <h1>En YAAVS queremos seguir ayudándote a hacer crecer tu <span class="accent">negocio</span></h1>
         <p class="lead">
           Responder esta encuesta te tomará menos de 3 minutos. Tu opinión nos permitirá mejorar
           la atención, nuestras herramientas y los beneficios que te ofrecemos.
         </p>
         <p class="lead" style="margin-top:0.55rem">Responde únicamente con base en tu experiencia reciente.</p>
-        <div class="meta-pills">
-          <span class="pill">≈ 3 minutos</span>
-          <span class="pill">Respuestas confidenciales</span>
-          <span class="pill">Experiencia reciente</span>
-        </div>
         ${actionsHtml({ primary: "Empezar", back: false })}
       </section>
     `);
