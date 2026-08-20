@@ -56,9 +56,9 @@
     ["recargaUso", "¿Usó RecargaKlic?"],
     ["recargaExp", "Experiencia RecargaKlic"],
     ["recargaMejora", "Mejora RecargaKlic"],
-    ["popUso", "¿Recibió material POP?"],
-    ["popSat", "Satisfacción POP"],
-    ["popMejora", "Mejora POP"],
+    ["popUso", "¿Recibió material de publicidad?"],
+    ["popSat", "Satisfacción con material de publicidad"],
+    ["popMejora", "Mejora material de publicidad"],
     ["rentabilidad", "Ganancias con YAAVS"],
     ["distribuidores", "Otro distribuidor de chips"],
     ["competencia", "Qué ofrece la competencia"],
@@ -74,7 +74,7 @@
     ["mesa_conocimiento", "Conocimiento"],
     ["mesa_trato", "Trato"],
     ["recargaExp", "RecargaKlic"],
-    ["popSat", "POP"],
+    ["popSat", "Publicidad"],
     ["rentabilidad", "Ganancias"],
   ];
 

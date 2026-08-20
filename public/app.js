@@ -348,11 +348,11 @@
       }
     }
 
-    steps.push({ id: "popUso", kind: "yesno", section: "Material POP" });
+    steps.push({ id: "popUso", kind: "yesno", section: "Material de publicidad" });
     if (a.popUso === "Sí") {
-      steps.push({ id: "popSat", kind: "scale", section: "Material POP" });
+      steps.push({ id: "popSat", kind: "scale", section: "Material de publicidad" });
       if (typeof a.popSat === "number" && a.popSat <= 3) {
-        steps.push({ id: "popMejora", kind: "choice", section: "Material POP" });
+        steps.push({ id: "popMejora", kind: "choice", section: "Material de publicidad" });
       }
     }
 
@@ -1220,24 +1220,24 @@
         break;
       case "popUso":
         node = renderYesNo({
-          section: "Sección 5 · Material POP",
+          section: "Sección 5 · Material de publicidad",
           title:
-            "En el último mes, ¿has recibido material POP, promocionales o rotulación YAAVS para tu negocio?",
+            "En el último mes, ¿has recibido material de publicidad, promocionales o rotulación YAAVS para tu negocio?",
           key: "popUso",
         });
         break;
       case "popSat":
         node = renderScale({
-          section: "Sección 5 · Material POP",
-          title: "¿Qué tan satisfecho estás con el material POP que se ha colocado en tu negocio?",
+          section: "Sección 5 · Material de publicidad",
+          title: "¿Qué tan satisfecho estás con el material de publicidad que se ha colocado en tu negocio?",
           key: "popSat",
           options: SCALE_SAT,
         });
         break;
       case "popMejora":
         node = renderChoice({
-          section: "Sección 5 · Material POP",
-          title: "¿Qué aspecto deberíamos mejorar principalmente?",
+          section: "Sección 5 · Material de publicidad",
+          title: "¿Qué aspecto del material de publicidad deberíamos mejorar principalmente?",
           key: "popMejora",
           options: POP_MEJORAS,
         });
