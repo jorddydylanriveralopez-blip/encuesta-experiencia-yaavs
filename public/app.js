@@ -50,6 +50,7 @@
     "Bot de WhatsApp (Alphabot)",
     "RecargaKlic Web",
     "Mesa de control",
+    "Ejecutivo de ventas",
   ];
 
   const VISITA_EJECUTIVO = [

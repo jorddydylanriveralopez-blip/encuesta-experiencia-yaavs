@@ -83,9 +83,10 @@
     "Bot de WhatsApp (Alphabot)",
     "RecargaKlic Web",
     "Mesa de control",
+    "Ejecutivo de ventas",
   ];
-  const RECARGA_METODO_SHORT = ["RecargaKlic", "WhatsApp", "Web", "Mesa de control"];
-  const RECARGA_METODO_COLORS = ["#2563b5", "#0d8a5a", "#c47a00", "#6b4f9a"];
+  const RECARGA_METODO_SHORT = ["RecargaKlic", "WhatsApp", "Web", "Mesa de control", "Ejecutivo"];
+  const RECARGA_METODO_COLORS = ["#2563b5", "#0d8a5a", "#c47a00", "#6b4f9a", "#0e7490"];
   const STOP = new Set("el la los las un una de del y o a en que se por para con no es al lo su sus mi me te".split(" "));
 
   const chartColors = { navy: "#0f2440", cyan: "#2563b5", good: "#0d8a5a", warn: "#c47a00", bad: "#c0392b", muted: "#5a738c" };
@@ -301,7 +302,7 @@
         type: "pie",
         data: {
           labels: RECARGA_METODO_LABELS,
-          datasets: [{ data: [0, 0, 0, 0], backgroundColor: RECARGA_METODO_COLORS, borderWidth: 2, borderColor: "#fff" }],
+          datasets: [{ data: [0, 0, 0, 0, 0], backgroundColor: RECARGA_METODO_COLORS, borderWidth: 2, borderColor: "#fff" }],
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } },
       });
