@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260820clave" />
+    <link rel="stylesheet" href="./styles.css?v=20260820retake" />
   </head>
   <body>
     <div class="atmosphere" aria-hidden="true">
@@ -22,9 +22,6 @@
       <div class="orb orb-b"></div>
       <div class="orb orb-c"></div>
       <div class="grid-glow"></div>
-      <span class="float-chip chip-a">Tu voz cuenta</span>
-      <span class="float-chip chip-b">Menos de 3 min</span>
-      <span class="float-chip chip-c">Experiencia real</span>
     </div>
 
     <header class="topbar">
@@ -46,12 +43,15 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+    <script src="./config.js?v=20260820retake"></script>
     <script>
-      // Candado temprano: bloquea tras 1 envío desde este navegador.
+      // Candado temprano: desactivado mientras allowRetake esté activo en config.
       (function () {
         var COUNT_KEY = "yaavs_nps_submit_count_v2";
         var LEGACY = "yaavs_nps_submitted_v1";
         var MAX = 1;
+        var allowRetake = !(window.YAAVS_NPS_CONFIG && window.YAAVS_NPS_CONFIG.allowRetake === false);
+        if (allowRetake) return;
         var count = 0;
         try {
           count = Number(localStorage.getItem(COUNT_KEY) || sessionStorage.getItem(COUNT_KEY) || 0) || 0;
@@ -76,7 +76,6 @@
         window.__YAAVS_NPS_LOCKED__ = true;
       })();
     </script>
-    <script src="./config.js?v=20260812d"></script>
-    <script src="./app.js?v=20260820clave" defer></script>
+    <script src="./app.js?v=20260820retake" defer></script>
   </body>
 </html>

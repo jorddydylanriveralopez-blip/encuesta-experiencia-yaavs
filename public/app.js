@@ -1,5 +1,6 @@
 (() => {
   const cfg = window.YAAVS_NPS_CONFIG || {};
+  const ALLOW_RETAKE = cfg.allowRetake !== false;
   const app = document.getElementById("app");
   const progressWrap = document.getElementById("progressWrap");
   const progressFill = document.getElementById("progressFill");
@@ -98,7 +99,7 @@
   const SUBMIT_COUNT_KEY = "yaavs_nps_submit_count_v2";
   const SUBMIT_LOCK_LEGACY = "yaavs_nps_submitted_v1";
   const DRAFT_KEY = "yaavs_nps_draft_v3";
-  const MAX_SUBMISSIONS = 1;
+  const MAX_SUBMISSIONS = ALLOW_RETAKE ? 999 : 1;
 
   function readCookie(name) {
     try {
@@ -429,7 +430,7 @@
         return (
           isValidClave(a.clave) &&
           state.claveCheck.allowed &&
-          !state.claveCheck.alreadySubmitted &&
+          (ALLOW_RETAKE || !state.claveCheck.alreadySubmitted) &&
           !state.claveCheck.checking
         );
       case "nps":
@@ -512,7 +513,7 @@
           render();
           return;
         }
-        if (state.claveCheck.alreadySubmitted) {
+        if (!ALLOW_RETAKE && state.claveCheck.alreadySubmitted) {
           showToast(state.claveCheck.message || "Esta clave ya contestó");
           render();
           return;
@@ -594,11 +595,13 @@
 
   function renderClave() {
     const check = state.claveCheck || {};
-    const statusClass = check.alreadySubmitted || (check.message && !check.allowed)
-      ? "clave-status is-bad"
-      : check.allowed
-        ? "clave-status is-good"
-        : "clave-status";
+    const blocked = !ALLOW_RETAKE && check.alreadySubmitted;
+    const statusClass =
+      blocked || (check.message && !check.allowed)
+        ? "clave-status is-bad"
+        : check.allowed
+          ? "clave-status is-good"
+          : "clave-status";
     const root = el(`
       <section class="card step">
         <span class="section-tag">Identificación</span>
@@ -664,7 +667,7 @@
             "Entra a tu cuenta YAAVS (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa.",
         };
         statusEl.className =
-          state.claveCheck.alreadySubmitted || !state.claveCheck.allowed
+          (!ALLOW_RETAKE && state.claveCheck.alreadySubmitted) || !state.claveCheck.allowed
             ? "clave-status is-bad"
             : "clave-status is-good";
         statusEl.textContent = state.claveCheck.message;
@@ -1075,6 +1078,29 @@
     return root;
   }
 
+  function restartSurvey() {
+    try {
+      sessionStorage.removeItem(`yaavs_nps_sent_${state.submissionId}`);
+    } catch (_) {}
+    clearDraft();
+    state.stepId = "welcome";
+    state.submitting = false;
+    state.submittedOnce = false;
+    state.submissionId = newSubmissionId();
+    state.navDir = 1;
+    state._lastError = null;
+    Object.assign(state.answers, blankAnswers());
+    state.claveCheck = {
+      checking: false,
+      allowed: false,
+      alreadySubmitted: false,
+      message: "",
+      hint: "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
+    };
+    render();
+    showToast("Listo: puedes contestar de nuevo");
+  }
+
   function renderDone(ok, errorMsg) {
     if (!ok) {
       return el(`
@@ -1090,6 +1116,12 @@
       `);
     }
 
+    const retake = ALLOW_RETAKE
+      ? `<div class="actions" style="justify-content:center;margin-top:1.25rem">
+            <button type="button" class="btn btn-primary" data-action="retake">Contestar otra vez</button>
+          </div>`
+      : "";
+
     return el(`
       <section class="card success step">
         <div class="success-icon">✓</div>
@@ -1098,6 +1130,7 @@
         <p class="lead" style="margin-top:0.75rem">
           En YAAVS las usaremos para mejorar lo que más importa; <span class="accent">TU NEGOCIO</span>.
         </p>
+        ${retake}
       </section>
     `);
   }
@@ -1446,6 +1479,10 @@
         state._lastError = null;
         render();
       });
+    }
+    const retake = node.querySelector("[data-action='retake']");
+    if (retake) {
+      retake.addEventListener("click", () => restartSurvey());
     }
   }
 

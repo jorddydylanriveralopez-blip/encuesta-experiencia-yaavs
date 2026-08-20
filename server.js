@@ -27,6 +27,8 @@ const DASHBOARD_PASSWORD = String(process.env.DASHBOARD_PASSWORD || "YaavsNps202
 const AUTH_SECRET = String(process.env.DASHBOARD_SECRET || `yaavs-nps-${DASHBOARD_PASSWORD}`);
 const AUTH_COOKIE = "yaavs_nps_dash";
 const recentPosts = new Map();
+// Pruebas: por defecto se puede volver a contestar. Para producción: ALLOW_RETAKE=0
+const ALLOW_RETAKE = !/^(0|false|no|off)$/i.test(String(process.env.ALLOW_RETAKE || "true").trim());
 
 app.disable("x-powered-by");
 app.use(express.json({ limit: "2mb" }));
@@ -427,7 +429,8 @@ app.get("/api/clave-status", async (req, res) => {
     .filter((r) => core.normalizeClave(r.clave) === clave)
     .sort((a, b) => Date.parse(b.receivedAt || b.timestamp || 0) - Date.parse(a.receivedAt || a.timestamp || 0));
   const recent = matches[0];
-  const alreadySubmitted = matches.length > 0;
+  const alreadySubmitted = matches.length > 0 && !ALLOW_RETAKE;
+  const hadPrior = matches.length > 0;
   const recentMs = recent ? Date.parse(recent.receivedAt || recent.timestamp || 0) : 0;
   const isRecent = Number.isFinite(recentMs) && Date.now() - recentMs < 1000 * 60 * 60 * 24 * 14;
 
@@ -436,13 +439,16 @@ app.get("/api/clave-status", async (req, res) => {
     valid: true,
     allowed: true,
     alreadySubmitted,
-    recent: alreadySubmitted,
-    recentWarning: alreadySubmitted,
+    recent: hadPrior,
+    recentWarning: hadPrior && !ALLOW_RETAKE,
+    allowRetake: ALLOW_RETAKE,
     lastAt: recent ? recent.receivedAt || recent.timestamp : null,
     hint,
     message: alreadySubmitted
       ? "Esta clave ya contestó la encuesta y no se puede volver a enviar."
-      : "Clave válida. Puedes continuar.",
+      : hadPrior && ALLOW_RETAKE
+        ? "Clave válida. Ya hay respuestas previas; en modo prueba puedes enviar otra."
+        : "Clave válida. Puedes continuar.",
     allowlistCount: claveRegistry.allowedCount(),
   });
 });
@@ -512,15 +518,17 @@ app.post("/api/responses", async (req, res) => {
       return res.status(200).json({ ok: true, id: already.id, duplicate: true });
     }
 
-    // Una sola respuesta por clave (local + catálogo remoto)
-    const { list: catalog } = await loadCatalog();
-    const claveTaken = catalog.some((r) => core.normalizeClave(r.clave) === entry.clave);
-    if (claveTaken) {
-      return res.status(409).json({
-        ok: false,
-        error: "Esta clave ya contestó la encuesta y no se puede volver a enviar.",
-        code: "clave_already_submitted",
-      });
+    // Una sola respuesta por clave (salvo modo prueba ALLOW_RETAKE)
+    if (!ALLOW_RETAKE) {
+      const { list: catalog } = await loadCatalog();
+      const claveTaken = catalog.some((r) => core.normalizeClave(r.clave) === entry.clave);
+      if (claveTaken) {
+        return res.status(409).json({
+          ok: false,
+          error: "Esta clave ya contestó la encuesta y no se puede volver a enviar.",
+          code: "clave_already_submitted",
+        });
+      }
     }
 
     const sameBurst = list.find((r) => {

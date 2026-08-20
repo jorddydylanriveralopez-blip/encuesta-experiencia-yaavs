@@ -11,4 +11,6 @@ window.YAAVS_NPS_CONFIG = {
   sheetUrl:
     "https://docs.google.com/spreadsheets/d/1SH-Zc_67UMjNnp2JVrqyBxbGMoBre9Za_qb3FxpLUBM/edit",
   sheetName: "Form Responses 1",
+  // Pruebas temporales: permitir varias respuestas con la misma clave/navegador.
+  allowRetake: true,
 };
