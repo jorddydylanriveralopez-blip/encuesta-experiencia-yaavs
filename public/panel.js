@@ -26,6 +26,7 @@
     ["competencia", "Qué ofrece la competencia"],
     ["rentabilidad", "Ganancias al trabajar con YAAVS"],
     ["mejoraGeneral", "Mejora general para hacer crecer el negocio"],
+    ["oportunidadesNegocio", "Nuevas oportunidades de negocio"],
   ];
 
   const state = {

@@ -160,6 +160,7 @@ function normalizeResponse(body) {
     competencia: body.competencia ?? "",
     rentabilidad: body.rentabilidad ?? "",
     mejoraGeneral: body.mejoraGeneral ?? "",
+    oportunidadesNegocio: body.oportunidadesNegocio ?? "",
     timestamp: body.timestamp || now,
     isTest: Boolean(body.isTest) || core.isTestRecord({ ...body, clave }),
   };
@@ -246,6 +247,7 @@ function parsePayload(raw) {
     Ganancias: "rentabilidad",
     Rentabilidad: "rentabilidad",
     "Mejora general": "mejoraGeneral",
+    "Oportunidades de negocio": "oportunidadesNegocio",
     "Submission ID": "submissionId",
   };
   const out = {};

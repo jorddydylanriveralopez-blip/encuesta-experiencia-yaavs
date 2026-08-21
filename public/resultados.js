@@ -66,6 +66,7 @@
     ["distribuidores", "Otro distribuidor de chips"],
     ["competencia", "Qué ofrece la competencia"],
     ["mejoraGeneral", "Mejora general para hacer crecer el negocio"],
+    ["oportunidadesNegocio", "Nuevas oportunidades de negocio"],
   ];
 
   const ATTRS = [
@@ -466,7 +467,10 @@
       if (from && (Number.isNaN(ts.getTime()) || ts < from)) return false;
       if (to && (Number.isNaN(ts.getTime()) || ts > to)) return false;
       if (!q) return true;
-      return [r.productosYaavs, r.recargaMetodo, r.nps, r.mejoraGeneral].join(" ").toLowerCase().includes(q);
+      return [r.productosYaavs, r.recargaMetodo, r.nps, r.mejoraGeneral, r.oportunidadesNegocio]
+        .join(" ")
+        .toLowerCase()
+        .includes(q);
     });
   }
 

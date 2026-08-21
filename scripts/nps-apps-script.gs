@@ -66,6 +66,7 @@ function doPost(e) {
       data.competencia || "",
       data.rentabilidad,
       data.mejoraGeneral || "",
+      data.oportunidadesNegocio || "",
     ]);
 
     return json_({ ok: true });
@@ -121,9 +122,10 @@ function getOrCreateSheet_(name) {
       "Competencia",
       "Ganancias",
       "Mejora general",
+      "Oportunidades de negocio",
     ]);
     sheet.setFrozenRows(1);
-    sheet.getRange(1, 1, 1, 26).setFontWeight("bold");
+    sheet.getRange(1, 1, 1, 27).setFontWeight("bold");
   }
   return sheet;
 }

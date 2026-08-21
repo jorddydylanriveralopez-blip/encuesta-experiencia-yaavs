@@ -36,6 +36,7 @@ var HEADERS = [
   "Qué ofrece la competencia",
   "Ganancias (1-5)",
   "Mejora general",
+  "Oportunidades de negocio",
   "Payload completo",
 ];
 
@@ -151,6 +152,7 @@ function rowFromParsed_(ts, p, raw) {
     show_(p.competencia),
     show_(p.rentabilidad),
     show_(p.mejoraGeneral),
+    show_(p.oportunidadesNegocio),
     raw || NA,
   ];
 }
@@ -201,6 +203,7 @@ function parsePayload_(raw) {
     Rentabilidad: "rentabilidad",
     Antigüedad: "antiguedad",
     "Mejora general": "mejoraGeneral",
+    "Oportunidades de negocio": "oportunidadesNegocio",
   };
   var out = {};
   text.split(/\n/).forEach(function (line) {
@@ -264,6 +267,7 @@ function doGet() {
       rentabilidad: p.rentabilidad || "",
       antiguedad: p.antiguedad || "",
       mejoraGeneral: p.mejoraGeneral || "",
+      oportunidadesNegocio: p.oportunidadesNegocio || "",
     });
   }
 

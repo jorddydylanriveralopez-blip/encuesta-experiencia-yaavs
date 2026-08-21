@@ -72,6 +72,16 @@
     "Planes de renta",
   ];
 
+  const OPORTUNIDADES_NEGOCIO = [
+    "Accesorios para celular",
+    "Equipos celulares",
+    "Tecnología, electrónica y Cómputo",
+    "Audio y entretenimiento",
+    "Movilidad eléctrica",
+    "Otro",
+  ];
+  const OPORTUNIDADES_NINGUNA = "Por el momento no me interesa incorporar nuevos productos";
+
   const SCALE_5 = [
     { value: 1, label: "Pésima" },
     { value: 2, label: "Mala" },
@@ -177,6 +187,8 @@
       distribuidores: "",
       competencia: "",
       mejoraGeneral: "",
+      oportunidadesNegocio: [],
+      oportunidadesNegocioOtro: "",
       website: "",
     };
   }
@@ -286,6 +298,10 @@
     merged.productosYaavs = migrateProductos(merged.productosYaavs);
     merged.mesaMatrix = migrateMatrix(merged.mesaMatrix);
     merged.mesaMejoras = Array.isArray(merged.mesaMejoras) ? merged.mesaMejoras : [];
+    merged.oportunidadesNegocio = Array.isArray(merged.oportunidadesNegocio)
+      ? merged.oportunidadesNegocio
+      : [];
+    merged.oportunidadesNegocioOtro = String(merged.oportunidadesNegocioOtro || "");
     Object.assign(state.answers, merged);
     if (draft.submissionId) state.submissionId = String(draft.submissionId);
     const steps = getVisibleSteps();
@@ -381,6 +397,7 @@
     }
     steps.push(
       { id: "mejoraGeneral", kind: "long", section: "Cierre" },
+      { id: "oportunidadesNegocio", kind: "oportunidades", section: "Nuevas oportunidades de negocio" },
       { id: "done", kind: "done" }
     );
 
@@ -472,6 +489,14 @@
         return a.competencia.trim().length > 0 && a.competencia.length <= 500;
       case "mejoraGeneral":
         return a.mejoraGeneral.length <= 700;
+      case "oportunidadesNegocio": {
+        const list = Array.isArray(a.oportunidadesNegocio) ? a.oportunidadesNegocio : [];
+        if (!list.length) return false;
+        if (list.includes(OPORTUNIDADES_NINGUNA)) return list.length === 1;
+        if (list.length > 3) return false;
+        if (list.includes("Otro") && !String(a.oportunidadesNegocioOtro || "").trim()) return false;
+        return String(a.oportunidadesNegocioOtro || "").length <= 200;
+      }
       default:
         return true;
     }
@@ -1060,7 +1085,7 @@
           state.answers.mejoraGeneral
         )}</textarea>
         <div class="char-count"><span id="mejoraCount">${state.answers.mejoraGeneral.length}</span>/700</div>
-        ${actionsHtml({ primary: state.submitting ? "Enviando…" : "Enviar respuestas", submit: true })}
+        ${actionsHtml()}
       </section>
     `);
     const ta = root.querySelector("#mejora");
@@ -1070,6 +1095,96 @@
       count.textContent = String(ta.value.length);
       refreshNext(root);
     });
+    return root;
+  }
+
+  function renderOportunidadesNegocio() {
+    const list = state.answers.oportunidadesNegocio;
+    const noneSelected = list.includes(OPORTUNIDADES_NINGUNA);
+    const options = [...OPORTUNIDADES_NEGOCIO, OPORTUNIDADES_NINGUNA]
+      .map((o) => {
+        const selected = list.includes(o) ? "is-selected" : "";
+        return `<button type="button" class="check ${selected}" data-val="${escapeAttr(o)}">
+          <span class="mark"></span><span>${escapeHtml(o)}</span>
+        </button>`;
+      })
+      .join("");
+
+    const showOtro = list.includes("Otro") && !noneSelected;
+    const otroBox = showOtro
+      ? `<div style="margin-top:14px">
+          <h3 class="question-title" style="font-size:1.05rem;margin-bottom:8px">
+            ¿Qué producto o categoría te gustaría que YAAVS pudiera distribuirte?
+          </h3>
+          <p class="question-help">Escribe el producto o tipo de productos que consideras una oportunidad para tu negocio.</p>
+          <input class="field" id="oportunidadesOtro" type="text" maxlength="200"
+            placeholder="Ej. fundas, audífonos, laptops…"
+            value="${escapeAttr(state.answers.oportunidadesNegocioOtro)}" />
+          <div class="char-count"><span id="oportunidadesOtroCount">${
+            state.answers.oportunidadesNegocioOtro.length
+          }</span>/200</div>
+        </div>`
+      : "";
+
+    const root = el(`
+      <section class="card step">
+        <span class="section-tag">Nuevas oportunidades de negocio</span>
+        <h2 class="question-title">
+          ¿Qué tipo de productos te interesaría incorporar a tu catálogo de ventas y que YAAVS pudiera distribuirte?
+        </h2>
+        <p class="question-help">Selecciona hasta tres opciones.</p>
+        <div class="choices">${options}</div>
+        ${otroBox}
+        ${actionsHtml({
+          primary: state.submitting ? "Enviando…" : "Enviar respuestas",
+          submit: true,
+        })}
+      </section>
+    `);
+
+    root.querySelectorAll("[data-val]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const val = btn.dataset.val;
+        const i = list.indexOf(val);
+        if (i >= 0) {
+          list.splice(i, 1);
+          if (val === "Otro") state.answers.oportunidadesNegocioOtro = "";
+          render();
+          return;
+        }
+
+        if (val === OPORTUNIDADES_NINGUNA) {
+          state.answers.oportunidadesNegocio = [OPORTUNIDADES_NINGUNA];
+          state.answers.oportunidadesNegocioOtro = "";
+          render();
+          return;
+        }
+
+        if (noneSelected) {
+          state.answers.oportunidadesNegocio = [];
+        }
+        const current = state.answers.oportunidadesNegocio;
+        if (current.length >= 3) {
+          showToast("Solo puedes elegir hasta 3 opciones");
+          return;
+        }
+        current.push(val);
+        pulseSelected(btn);
+        render();
+      });
+    });
+
+    const otroInput = root.querySelector("#oportunidadesOtro");
+    if (otroInput) {
+      otroInput.addEventListener("input", () => {
+        state.answers.oportunidadesNegocioOtro = otroInput.value.slice(0, 200);
+        const count = root.querySelector("#oportunidadesOtroCount");
+        if (count) count.textContent = String(state.answers.oportunidadesNegocioOtro.length);
+        refreshNext(root);
+        saveDraft();
+      });
+      setTimeout(() => otroInput.focus(), 50);
+    }
     return root;
   }
 
@@ -1195,6 +1310,13 @@
       distribuidores: visibleValue(a.distribuidores),
       competencia: visibleValue(a.competencia, { shown: otherDist }),
       mejoraGeneral: a.mejoraGeneral.trim() || "Sin respuesta",
+      oportunidadesNegocio: visibleValue(
+        a.oportunidadesNegocio.includes("Otro")
+          ? a.oportunidadesNegocio.map((x) =>
+              x === "Otro" ? `Otro: ${a.oportunidadesNegocioOtro.trim()}` : x
+            )
+          : a.oportunidadesNegocio
+      ),
       website: a.website,
       sheetName: cfg.sheetName || "Respuestas NPS",
     };
@@ -1226,6 +1348,7 @@
       `Distribuidores: ${payload.distribuidores}`,
       `Competencia: ${payload.competencia}`,
       `Mejora general: ${payload.mejoraGeneral}`,
+      `Oportunidades de negocio: ${payload.oportunidadesNegocio}`,
       `Submission ID: ${payload.submissionId}`,
       `JSON: ${JSON.stringify(payload)}`,
     ].join("\n");
@@ -1250,7 +1373,7 @@
 
   async function submitForm() {
     if (state.submitting || state.submittedOnce) return;
-    if (!canContinue("mejoraGeneral")) return;
+    if (!canContinue("oportunidadesNegocio")) return;
     const sentKey = `yaavs_nps_sent_${state.submissionId}`;
     try {
       if (sessionStorage.getItem(sentKey) === "1") {
@@ -1447,6 +1570,9 @@
       case "mejoraGeneral":
         node = renderLong();
         break;
+      case "oportunidadesNegocio":
+        node = renderOportunidadesNegocio();
+        break;
       case "done":
         node = renderDone(!state._lastError, state._lastError);
         break;
@@ -1462,7 +1588,7 @@
     const retry = node.querySelector("[data-action='retry']");
     if (retry) {
       retry.addEventListener("click", () => {
-        state.stepId = "mejoraGeneral";
+        state.stepId = "oportunidadesNegocio";
         state._lastError = null;
         submitForm();
       });
@@ -1470,7 +1596,7 @@
     const backEdit = node.querySelector("[data-action='back-edit']");
     if (backEdit) {
       backEdit.addEventListener("click", () => {
-        state.stepId = "mejoraGeneral";
+        state.stepId = "oportunidadesNegocio";
         state._lastError = null;
         render();
       });
@@ -1509,7 +1635,7 @@
       return;
     }
     e.preventDefault();
-    if (state.stepId === "mejoraGeneral") submitForm();
+    if (state.stepId === "oportunidadesNegocio") submitForm();
     else go(1);
   });
 
