@@ -397,7 +397,7 @@ app.get("/api/clave-status", async (req, res) => {
   const formatOk = core.isValidClave(clave);
   const allowed = formatOk && claveRegistry.isAllowedClave(clave);
   const hint =
-    "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.";
+    "Tu clave YAAVSER está en tu cuenta RecargaKlic (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.";
 
   if (!formatOk) {
     return res.json({
@@ -422,7 +422,7 @@ app.get("/api/clave-status", async (req, res) => {
       recentWarning: false,
       hint,
       message:
-        "No encontramos esa clave en el padrón YAAVSER. Debe coincidir exactamente. Si no la tienes a la mano, ábrela desde tu cuenta YAAVS.",
+        "No encontramos esa clave en el padrón YAAVSER. Debe coincidir exactamente. Si no la tienes a la mano, ábrela desde tu cuenta RecargaKlic.",
     });
   }
 
@@ -503,7 +503,7 @@ app.post("/api/responses", async (req, res) => {
       return res.status(403).json({
         ok: false,
         error:
-          "Esa clave no está autorizada para contestar. Debe coincidir exactamente con tu clave YAAVSER. Consúltala en tu cuenta YAAVS.",
+          "Esa clave no está autorizada para contestar. Debe coincidir exactamente con tu clave YAAVSER. Consúltala en tu cuenta RecargaKlic.",
         code: "clave_not_allowed",
       });
     }

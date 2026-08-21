@@ -218,7 +218,7 @@
       allowed: false,
       alreadySubmitted: false,
       message: "",
-      hint: "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
+      hint: "Tu clave YAAVSER está en tu cuenta RecargaKlic (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
     };
   }
 
@@ -330,7 +330,7 @@
       allowed: false,
       alreadySubmitted: false,
       message: "",
-      hint: "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
+      hint: "Tu clave YAAVSER está en tu cuenta RecargaKlic (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
     },
   };
 
@@ -532,7 +532,7 @@
           message: (data && data.message) || "",
           hint:
             (data && data.hint) ||
-            "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente.",
+            "Tu clave YAAVSER está en tu cuenta RecargaKlic (app o portal), en tu perfil o datos de cliente.",
         };
         if (!state.claveCheck.allowed) {
           showToast(state.claveCheck.message || "Clave no autorizada");
@@ -639,7 +639,7 @@
           <strong>¿No la tienes a la mano?</strong>
           ${escapeHtml(
             check.hint ||
-              "Entra a tu cuenta YAAVS (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa."
+              "Entra a tu cuenta RecargaKlic (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa."
           )}
         </p>
         <input class="hp" name="website" id="website" tabindex="-1" autocomplete="off"
@@ -684,7 +684,7 @@
           message: (data && data.message) || "",
           hint:
             (data && data.hint) ||
-            "Entra a tu cuenta YAAVS (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa.",
+            "Entra a tu cuenta RecargaKlic (app o portal), ve a tu perfil o datos de cliente y copia tu clave YAAVSER completa.",
         };
         statusEl.className =
           (!ALLOW_RETAKE && state.claveCheck.alreadySubmitted) || !state.claveCheck.allowed
@@ -1205,7 +1205,7 @@
       allowed: false,
       alreadySubmitted: false,
       message: "",
-      hint: "Tu clave YAAVSER está en tu cuenta YAAVS (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
+      hint: "Tu clave YAAVSER está en tu cuenta RecargaKlic (app o portal), en tu perfil o datos de cliente. Escríbela completa y exacta, sin espacios.",
     };
     render();
     showToast("Listo: puedes contestar de nuevo");
