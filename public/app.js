@@ -967,7 +967,8 @@
         const val = btn.dataset.val;
         state.answers[key] = val;
         if (otroKey && val !== "Otro") state.answers[otroKey] = "";
-        if (otroKey && (val === "Otro" || isOtro)) {
+        const needsOtroMount = Boolean(otroKey) && ((val === "Otro") !== isOtro);
+        if (needsOtroMount) {
           render();
           return;
         }
@@ -1112,7 +1113,7 @@
 
     const showOtro = list.includes("Otro") && !noneSelected;
     const otroBox = showOtro
-      ? `<div style="margin-top:14px">
+      ? `<div class="otro-wrap" style="margin-top:14px">
           <h3 class="question-title" style="font-size:1.05rem;margin-bottom:8px">
             ¿Qué producto o categoría te gustaría que YAAVS pudiera distribuirte?
           </h3>
@@ -1124,7 +1125,7 @@
             state.answers.oportunidadesNegocioOtro.length
           }</span>/200</div>
         </div>`
-      : "";
+      : `<div class="otro-wrap" hidden></div>`;
 
     const root = el(`
       <section class="card step">
@@ -1142,6 +1143,49 @@
       </section>
     `);
 
+    function syncOtroBox() {
+      const wrap = root.querySelector(".otro-wrap");
+      const needsOtro = list.includes("Otro") && !list.includes(OPORTUNIDADES_NINGUNA);
+      if (!wrap) return;
+      if (!needsOtro) {
+        wrap.hidden = true;
+        wrap.innerHTML = "";
+        state.answers.oportunidadesNegocioOtro = "";
+        return;
+      }
+      if (wrap.hidden || !wrap.querySelector("#oportunidadesOtro")) {
+        wrap.hidden = false;
+        wrap.innerHTML = `
+          <h3 class="question-title" style="font-size:1.05rem;margin-bottom:8px">
+            ¿Qué producto o categoría te gustaría que YAAVS pudiera distribuirte?
+          </h3>
+          <p class="question-help">Escribe el producto o tipo de productos que consideras una oportunidad para tu negocio.</p>
+          <input class="field" id="oportunidadesOtro" type="text" maxlength="200"
+            placeholder="Ej. fundas, audífonos, laptops…"
+            value="${escapeAttr(state.answers.oportunidadesNegocioOtro)}" />
+          <div class="char-count"><span id="oportunidadesOtroCount">${
+            state.answers.oportunidadesNegocioOtro.length
+          }</span>/200</div>`;
+        const otroInput = wrap.querySelector("#oportunidadesOtro");
+        otroInput.addEventListener("input", () => {
+          state.answers.oportunidadesNegocioOtro = otroInput.value.slice(0, 200);
+          const count = wrap.querySelector("#oportunidadesOtroCount");
+          if (count) count.textContent = String(state.answers.oportunidadesNegocioOtro.length);
+          refreshNext(root);
+          saveDraft();
+        });
+        setTimeout(() => otroInput.focus(), 50);
+      }
+    }
+
+    function syncSelected() {
+      root.querySelectorAll("[data-val]").forEach((b) => {
+        b.classList.toggle("is-selected", list.includes(b.dataset.val));
+      });
+      refreshNext(root);
+      saveDraft();
+    }
+
     root.querySelectorAll("[data-val]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const val = btn.dataset.val;
@@ -1149,28 +1193,32 @@
         if (i >= 0) {
           list.splice(i, 1);
           if (val === "Otro") state.answers.oportunidadesNegocioOtro = "";
-          render();
+          syncSelected();
+          syncOtroBox();
           return;
         }
 
         if (val === OPORTUNIDADES_NINGUNA) {
-          state.answers.oportunidadesNegocio = [OPORTUNIDADES_NINGUNA];
+          state.answers.oportunidadesNegocio.splice(0, list.length, OPORTUNIDADES_NINGUNA);
           state.answers.oportunidadesNegocioOtro = "";
-          render();
+          syncSelected();
+          syncOtroBox();
+          pulseSelected(btn);
           return;
         }
 
-        if (noneSelected) {
-          state.answers.oportunidadesNegocio = [];
+        if (list.includes(OPORTUNIDADES_NINGUNA)) {
+          const noneIdx = list.indexOf(OPORTUNIDADES_NINGUNA);
+          if (noneIdx >= 0) list.splice(noneIdx, 1);
         }
-        const current = state.answers.oportunidadesNegocio;
-        if (current.length >= 3) {
+        if (list.length >= 3) {
           showToast("Solo puedes elegir hasta 3 opciones");
           return;
         }
-        current.push(val);
+        list.push(val);
+        syncSelected();
+        syncOtroBox();
         pulseSelected(btn);
-        render();
       });
     });
 
@@ -1448,6 +1496,8 @@
 
     updateProgress();
     const id = state.stepId;
+    const stepChanged = state._renderedStepId !== id;
+    state._renderedStepId = id;
     let node;
 
     switch (id) {
@@ -1581,7 +1631,10 @@
     }
 
     app.replaceChildren(node);
-    if (state.navDir < 0) node.classList.add("is-back");
+    if (stepChanged) {
+      node.classList.add("is-entering");
+      if (state.navDir < 0) node.classList.add("is-back");
+    }
     bindCommon(node);
     saveDraft();
 
