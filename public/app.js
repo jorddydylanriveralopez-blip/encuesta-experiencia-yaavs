@@ -77,7 +77,6 @@
     "Equipos celulares",
     "Tecnología, electrónica y Cómputo",
     "Audio y entretenimiento",
-    "Movilidad eléctrica",
     "Otro",
   ];
   const OPORTUNIDADES_NINGUNA = "Por el momento no me interesa incorporar nuevos productos";
